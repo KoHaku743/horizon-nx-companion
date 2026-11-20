@@ -833,7 +833,7 @@ impl App {
     fn worlds_page(&mut self, ui: &mut egui::Ui) {
         ui.heading("Worlds");
         ui.label(weak(
-            "Horizon plays Java Edition worlds: copy them between the Switch and Minecraft on this computer. A world from an older Minecraft is upgraded when it's opened; one from a newer Minecraft than 26.3 may not open.",
+            "Copy worlds between Horizon on the Switch and Horizon on this computer: they're the same worlds, so you can carry on where you left off. A copy never replaces a world: one with the same name gets a number.",
         ));
         ui.add_space(8.0);
         let Some(card) = self.no_card(ui) else {
@@ -879,7 +879,7 @@ impl App {
                     }
                 });
             }
-            cols[1].label(RichText::new("On this computer (Minecraft)").strong());
+            cols[1].label(RichText::new("On this computer (Horizon)").strong());
             if self.computer_worlds.is_empty() {
                 cols[1].label(weak("No worlds."));
             }

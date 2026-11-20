@@ -14,7 +14,7 @@ are new and not tested on real machines yet: reports welcome.
 | **Game files** | Copies Minecraft 26.3's files, prepared by the Horizon launcher on this computer, to `switch/horizon/resources/` and packs them into `resources.hzpak`, exactly as the game builds it on its first start, so the Switch starts fast from the first run. Files already on the card aren't copied again. |
 | **Horizon build** | Installs `horizon.nro` from this fork's releases (the checksum is checked). Test builds are behind a switch. |
 | **Mods and packs** | Horizon's mod registry: content mods and resource packs, checked here with the same code as the game's Get Mods (a check takes seconds on a computer), then put on the card and turned on. **Check all** checks every mod at once, so the list says which ones work on the Switch build. Search, Install, Update, Remove. |
-| **Worlds** | Backs up the Switch's worlds to `Documents/Horizon Switch Backups`, and copies worlds between the Switch and Minecraft on this computer. |
+| **Worlds** | Backs up the Switch's worlds to `Documents/Horizon Switch Backups`, and copies worlds between Horizon on the Switch and Horizon on this computer (`horizon/saves` in the system's data folder). |
 | **Logs** | Reads the game's logs (errors and warnings only, if you like) and zips them for a bug report. |
 | **Free up space** | Lists what the game can make again (old logs, unfinished downloads, old server resource pack bundles, macOS junk files) with sizes; you pick what goes. Worlds, settings, your account, mods and the game files are never listed. |
 

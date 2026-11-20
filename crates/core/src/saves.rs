@@ -1,4 +1,4 @@
-//! Worlds: backing up the Switch's, and copying worlds between the Switch and Minecraft on this
+//! Worlds: backing up the Switch's, and copying worlds between the Switch and Horizon on this
 //! computer (Horizon plays vanilla 26.3 worlds; an older world is upgraded when it's opened, a
 //! newer one may not open).
 
@@ -45,16 +45,16 @@ pub fn switch_saves(card: &SdCard) -> PathBuf {
     card.horizon().join("saves")
 }
 
-/// Minecraft's own `saves` folder on this computer (the official launcher's).
+/// Horizon's own `saves` folder on this computer: the game's home, as the game finds it
+/// (`HORIZON_HOME`, else `horizon` in the system's data folder: macOS
+/// `~/Library/Application Support/horizon`, Windows `%APPDATA%\horizon`, Linux
+/// `~/.local/share/horizon`).
 pub fn computer_saves() -> Option<PathBuf> {
-    let dir = if cfg!(target_os = "macos") {
-        dirs::data_dir()?.join("minecraft")
-    } else if cfg!(target_os = "windows") {
-        dirs::data_dir()?.join(".minecraft")
-    } else {
-        dirs::home_dir()?.join(".minecraft")
+    let home = match std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
+        Some(home) => PathBuf::from(home),
+        None => dirs::data_dir()?.join("horizon"),
     };
-    Some(dir.join("saves"))
+    Some(home.join("saves"))
 }
 
 /// Where backups go: `Documents/Horizon Switch Backups`.
