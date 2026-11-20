@@ -1,0 +1,16 @@
+[package]
+name = "horizon-nx-companion"
+description = "Horizon for Switch companion: prepares the SD card on a computer."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "horizon-nx-companion"
+path = "src/main.rs"
+
+[dependencies]
+companion-core = { path = "../core" }
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"] }
+rfd = "0.18"
+horizon-mods = { path = "../../vendor/horizon-mods", features = ["index"] }
