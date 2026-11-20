@@ -23,8 +23,14 @@ impl SdCard {
         }
         Some(SdCard {
             root: root.to_path_buf(),
+            // A drive letter has no file name: "E:".
             name: root.file_name().map_or_else(
-                || root.display().to_string(),
+                || {
+                    root.display()
+                        .to_string()
+                        .trim_end_matches(['\\', '/'])
+                        .to_owned()
+                },
                 |n| n.to_string_lossy().into_owned(),
             ),
             has_horizon: root.join("switch/horizon").is_dir(),
@@ -109,21 +115,62 @@ pub fn remove_mac_junk(dir: &Path) -> usize {
     removed
 }
 
-/// Ejects the drive (macOS: `diskutil eject`; elsewhere the system's own way is asked of the
-/// player).
+/// Ejects the drive: macOS `diskutil eject`; Windows the Explorer's Eject; Linux `udisksctl`
+/// (unmount, then power off).
 pub fn eject(card: &SdCard) -> Result<(), String> {
-    if cfg!(target_os = "macos") {
-        let out = std::process::Command::new("diskutil")
-            .arg("eject")
-            .arg(&card.root)
-            .output()
-            .map_err(|e| e.to_string())?;
+    use std::process::Command;
+    let run = |command: &mut Command| -> Result<String, String> {
+        let out = command.output().map_err(|e| e.to_string())?;
         if out.status.success() {
-            Ok(())
+            Ok(String::from_utf8_lossy(&out.stdout).trim().to_owned())
         } else {
-            Err(String::from_utf8_lossy(&out.stderr).trim().to_owned())
+            let err = String::from_utf8_lossy(&out.stderr).trim().to_owned();
+            Err(if err.is_empty() {
+                "The system wouldn't eject it: close what uses it and try again.".into()
+            } else {
+                err
+            })
         }
+    };
+    if cfg!(target_os = "macos") {
+        run(Command::new("diskutil").arg("eject").arg(&card.root)).map(|_| ())
+    } else if cfg!(target_os = "windows") {
+        let drive = card
+            .root
+            .to_string_lossy()
+            .trim_end_matches(['\\', '/'])
+            .to_owned();
+        if drive.len() != 2 || !drive.ends_with(':') {
+            return Err("Eject the SD card from the Explorer.".into());
+        }
+        let script = format!(
+            "(New-Object -ComObject Shell.Application).Namespace(17).ParseName('{drive}').InvokeVerb('Eject')"
+        );
+        run(Command::new("powershell").args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            &script,
+        ]))?;
+        // The verb returns before the drive is gone; it's ejected once the system lets it go.
+        for _ in 0..20 {
+            if !card.root.exists() {
+                return Ok(());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(250));
+        }
+        Err(
+            "Windows didn't eject it yet: close what uses the card, or eject it from the Explorer."
+                .into(),
+        )
     } else {
-        Err("Eject the SD card from your system's file manager.".into())
+        let device = run(Command::new("findmnt")
+            .args(["-no", "SOURCE"])
+            .arg(&card.root))
+        .map_err(|_| "Eject the SD card from your file manager.".to_owned())?;
+        run(Command::new("udisksctl").args(["unmount", "-b", &device]))?;
+        // Powering off is a nicety (not every reader allows it): unmounted is safe to unplug.
+        let _ = run(Command::new("udisksctl").args(["power-off", "-b", &device]));
+        Ok(())
     }
 }

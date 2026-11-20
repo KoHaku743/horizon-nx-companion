@@ -3,8 +3,8 @@
 A computer app for [Horizon on the Switch](https://github.com/KoHaku743/horizon-nx): it does on your
 computer what the Switch is slow at, and looks after the SD card.
 
-macOS for now (Apple silicon and Intel). Windows and Linux builds will follow; the code already finds
-SD cards there.
+For macOS (Apple silicon and Intel), Windows (x64) and Linux (x86_64). The Windows and Linux builds
+are new and not tested on real machines yet: reports welcome.
 
 ## What it does
 
@@ -28,13 +28,25 @@ SD cards there.
    again. If macOS still refuses (newer versions): System Settings > Privacy & Security > **Open Anyway**,
    or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Horizon NX Companion.app"`.
 
+## Install (Windows)
+
+Download `horizon-nx-companion-windows.zip`, unzip it and run **Horizon NX Companion.exe**. It isn't
+signed, so SmartScreen may warn the first time: **More info > Run anyway**.
+
+## Install (Linux)
+
+Download `horizon-nx-companion-linux-x86_64.tar.gz`, unpack it and run `./horizon-nx-companion`, or
+`./install.sh` to put it in your applications menu (`./install.sh --remove` takes it out again). The
+SD card is found under `/media/$USER`, `/run/media/$USER` or `/mnt`; **Eject** uses `udisksctl`.
+
 ## Getting the game files
 
 Horizon never ships Minecraft's files: they come from your own copy. Install the
 [Horizon launcher](https://playhorizon.dev) on this computer and start it once with your Minecraft
 account and press **Prepare**. The files land in
-`~/Library/Application Support/horizon-launcher/versions/<version>/.local/horizon-client/26.3` (`.local` is
-hidden in Finder: Cmd+Shift+. shows it). The companion finds them by itself; with **Choose…** you can
+`horizon-launcher/versions/<version>/.local/horizon-client/26.3` in the launcher's data folder
+(macOS `~/Library/Application Support`, Windows `%APPDATA%`, Linux `~/.local/share`; `.local` is a
+hidden folder). The companion finds them by itself; with **Choose…** you can
 pick the `horizon-launcher` folder and it looks inside.
 
 `~/Library/Application Support/horizon` is something else: the game's own worlds and settings on the
@@ -52,7 +64,7 @@ Always **Eject** before you unplug the card or leave hekate's USB mode.
 ```sh
 cargo run -p horizon-nx-companion          # run it
 cargo test --workspace                     # tests (no network)
-packaging/macos/bundle.sh                  # the .app and its zip, on a Mac
+packaging/macos/bundle.sh                  # the .app and its zip, on a Mac (CI builds all three)
 ```
 
 `crates/core` does the work (no window: SD card, `.hzpak`, releases, registry, saves, logs, cleanup),
@@ -62,6 +74,5 @@ crates (MIT, see `vendor/LICENSE-horizon`), so a mod is checked by the same code
 ## Later
 
 - Building `horizon.nro` on this computer (native mods compiled into a custom build).
-- Windows and Linux releases.
 
 MIT licensed. Not affiliated with Mojang or Microsoft.

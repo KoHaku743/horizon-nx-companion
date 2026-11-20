@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Horizon NX Companion
+Comment=Prepares the Switch's SD card for Horizon
+Exec=horizon-nx-companion
+Icon=horizon-nx-companion
+Terminal=false
+Categories=Utility;Game;
