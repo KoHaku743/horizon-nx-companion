@@ -6,11 +6,13 @@
 pub mod cleanup;
 pub mod hzpak;
 pub mod logs;
+pub mod nbt;
 pub mod registry;
 pub mod releases;
 pub mod resources;
 pub mod saves;
 pub mod sd;
+pub mod sync;
 
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};

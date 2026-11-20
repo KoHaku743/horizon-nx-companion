@@ -8,6 +8,7 @@ use companion_core::releases::{self, Release};
 use companion_core::resources::{self, OnCard, Plan, Prepared};
 use companion_core::saves::{self, World};
 use companion_core::sd::{self, SdCard};
+use companion_core::sync::{self, Direction, Plan as SyncPlan};
 use companion_core::{Progress, cleanup, logs, size_text};
 use eframe::egui::{self, Color32, RichText};
 use horizon_mods::index::Index;
@@ -93,17 +94,19 @@ enum Page {
     Build,
     Mods,
     Worlds,
+    Sync,
     Logs,
     Cleanup,
 }
 
 impl Page {
-    const ALL: [(Page, &'static str); 7] = [
+    const ALL: [(Page, &'static str); 8] = [
         (Page::Card, "SD card"),
         (Page::GameFiles, "Game files"),
         (Page::Build, "Horizon build"),
         (Page::Mods, "Mods and packs"),
         (Page::Worlds, "Worlds"),
+        (Page::Sync, "Sync with Horizon"),
         (Page::Logs, "Logs"),
         (Page::Cleanup, "Free up space"),
     ];
@@ -148,6 +151,8 @@ struct App {
 
     switch_worlds: Vec<World>,
     computer_worlds: Vec<World>,
+    to_switch: SyncPlan,
+    to_computer: SyncPlan,
 
     log_files: Vec<PathBuf>,
     log: Option<(PathBuf, String)>,
@@ -179,6 +184,8 @@ impl App {
             show_kind: None,
             switch_worlds: Vec::new(),
             computer_worlds: Vec::new(),
+            to_switch: SyncPlan::default(),
+            to_computer: SyncPlan::default(),
             log_files: Vec::new(),
             log: None,
             problems_only: false,
@@ -217,6 +224,14 @@ impl App {
         self.computer_worlds = saves::computer_saves()
             .map(|s| saves::worlds_in(&s))
             .unwrap_or_default();
+        let home = saves::computer_home();
+        (self.to_switch, self.to_computer) = match (&card, &home) {
+            (Some(card), Some(home)) => (
+                sync::plan(home, &card.horizon(), Direction::ToSwitch),
+                sync::plan(&card.horizon(), home, Direction::ToComputer),
+            ),
+            _ => Default::default(),
+        };
         self.log_files = card.as_ref().map(logs::files).unwrap_or_default();
         self.cleanables = card
             .as_ref()
@@ -327,6 +342,7 @@ impl eframe::App for App {
                     Page::Build => self.build_page(ui),
                     Page::Mods => self.mods_page(ui),
                     Page::Worlds => self.worlds_page(ui),
+                    Page::Sync => self.sync_page(ui),
                     Page::Logs => self.logs_page(ui),
                     Page::Cleanup => self.cleanup_page(ui),
                 });
@@ -899,6 +915,104 @@ impl App {
                 });
             }
         });
+    }
+
+    fn sync_page(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Sync with Horizon");
+        ui.label(weak(
+            "Mods, resource packs and servers between Horizon on this computer and Horizon on the Switch. A copy adds what the other side lacks and updates what differs; nothing is deleted. Worlds are on the Worlds page.",
+        ));
+        ui.add_space(8.0);
+        let Some(card) = self.no_card(ui) else {
+            return;
+        };
+        let Some(home) = saves::computer_home() else {
+            ui.label(bad("This computer has no data folder for Horizon."));
+            return;
+        };
+        if !home.is_dir() {
+            ui.label(weak(format!(
+                "Horizon hasn't run on this computer yet ({} doesn't exist): only Switch → computer has anything to copy.",
+                home.display()
+            )));
+        } else {
+            ui.horizontal(|ui| {
+                ui.label(weak(format!(
+                    "Horizon on this computer: {}",
+                    home.display()
+                )));
+                if ui.small_button("Open").clicked() {
+                    reveal(&home);
+                }
+            });
+        }
+        ui.add_space(6.0);
+        let sides = [
+            (
+                "This computer → Switch",
+                "Copy to the Switch",
+                Direction::ToSwitch,
+                self.to_switch.clone(),
+                card.horizon(),
+            ),
+            (
+                "Switch → this computer",
+                "Copy to this computer",
+                Direction::ToComputer,
+                self.to_computer.clone(),
+                home,
+            ),
+        ];
+        for (title, button, direction, plan, to) in sides {
+            ui.group(|ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(title).strong());
+                    ui.label(plan.summary());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let label = if plan.is_empty() {
+                            button.to_owned()
+                        } else {
+                            format!("{button} ({})", size_text(plan.bytes()))
+                        };
+                        if ui
+                            .add_enabled(!plan.is_empty() && !self.busy(), egui::Button::new(label))
+                            .clicked()
+                        {
+                            let plan = plan.clone();
+                            self.start(button, After::Card, move |p| {
+                                sync::apply(&plan, &to, direction, p)
+                            });
+                        }
+                    });
+                });
+                if !plan.is_empty() || !plan.skipped.is_empty() {
+                    egui::CollapsingHeader::new("Details")
+                        .id_salt(title)
+                        .show(ui, |ui| {
+                            for copy in &plan.copies {
+                                let what = match copy.what {
+                                    sync::What::Mod => "mod",
+                                    sync::What::Pack => "resource pack",
+                                };
+                                let how = if copy.update { "update" } else { "new" };
+                                ui.label(format!(
+                                    "{} · {what}, {how}, {}",
+                                    copy.name,
+                                    size_text(copy.bytes)
+                                ));
+                            }
+                            for server in &plan.servers {
+                                ui.label(format!("{} · server", sync::server_name(server)));
+                            }
+                            for (name, why) in &plan.skipped {
+                                ui.label(weak(format!("{name} stays: {why}")));
+                            }
+                        });
+                }
+            });
+            ui.add_space(4.0);
+        }
     }
 
     fn logs_page(&mut self, ui: &mut egui::Ui) {

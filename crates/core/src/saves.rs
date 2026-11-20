@@ -50,11 +50,15 @@ pub fn switch_saves(card: &SdCard) -> PathBuf {
 /// `~/Library/Application Support/horizon`, Windows `%APPDATA%\horizon`, Linux
 /// `~/.local/share/horizon`).
 pub fn computer_saves() -> Option<PathBuf> {
-    let home = match std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
-        Some(home) => PathBuf::from(home),
-        None => dirs::data_dir()?.join("horizon"),
-    };
-    Some(home.join("saves"))
+    Some(computer_home()?.join("saves"))
+}
+
+/// Horizon's home folder on this computer (see [`computer_saves`]).
+pub fn computer_home() -> Option<PathBuf> {
+    match std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
+        Some(home) => Some(PathBuf::from(home)),
+        None => Some(dirs::data_dir()?.join("horizon")),
+    }
 }
 
 /// Where backups go: `Documents/Horizon Switch Backups`.
@@ -169,7 +173,7 @@ pub fn copy_world(world: &World, to_saves: &Path, progress: &Progress) -> Result
     Ok(format!("{} copied as \"{name}\".", world.name))
 }
 
-fn copy_tree(from: &Path, to: &Path, progress: &Progress) -> Result<(), String> {
+pub(crate) fn copy_tree(from: &Path, to: &Path, progress: &Progress) -> Result<(), String> {
     let mut pending = vec![(from.to_path_buf(), to.to_path_buf())];
     while let Some((from, to)) = pending.pop() {
         progress.check()?;
