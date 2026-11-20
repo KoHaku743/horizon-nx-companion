@@ -14,6 +14,15 @@ lipo -create -output "$app/Contents/MacOS/horizon-nx-companion" \
   target/aarch64-apple-darwin/release/horizon-nx-companion \
   target/x86_64-apple-darwin/release/horizon-nx-companion
 sed "s/VERSION/$version/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
+iconset="dist/AppIcon.iconset"
+mkdir -p "$iconset"
+for size in 16 32 128 256 512; do
+  sips -z $size $size packaging/macos/icon.png --out "$iconset/icon_${size}x${size}.png" >/dev/null
+  double=$((size * 2))
+  sips -z $double $double packaging/macos/icon.png --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+rm -rf "$iconset"
 # Not notarized: an ad-hoc signature, so macOS runs it after "Open" from the right-click menu.
 codesign --force --deep --sign - "$app"
 (cd dist && ditto -c -k --keepParent "Horizon NX Companion.app" "horizon-nx-companion-macos.zip")

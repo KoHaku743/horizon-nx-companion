@@ -6,6 +6,7 @@
   <key>CFBundleDisplayName</key><string>Horizon NX Companion</string>
   <key>CFBundleIdentifier</key><string>io.github.kohaku743.horizon-nx-companion</string>
   <key>CFBundleExecutable</key><string>horizon-nx-companion</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>VERSION</string>
   <key>CFBundleVersion</key><string>VERSION</string>

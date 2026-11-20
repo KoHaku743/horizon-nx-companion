@@ -19,7 +19,12 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("Horizon NX Companion")
             .with_inner_size([940.0, 640.0])
-            .with_min_inner_size([720.0, 480.0]),
+            .with_min_inner_size([720.0, 480.0])
+            .with_icon(egui::IconData {
+                rgba: include_bytes!("../icon-128.rgba").to_vec(),
+                width: 128,
+                height: 128,
+            }),
         ..Default::default()
     };
     eframe::run_native(
