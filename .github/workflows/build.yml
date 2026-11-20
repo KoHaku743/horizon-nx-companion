@@ -6,9 +6,17 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a release of this version (0.1.0); empty: just build"
+        required: false
+        default: ""
 
 permissions:
   contents: write
+
+env:
+  RELEASE: ${{ inputs.release }}
 
 jobs:
   test:
@@ -76,7 +84,7 @@ jobs:
           path: dist/horizon-nx-companion-linux-x86_64.tar.gz
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
     needs: [test, macos, windows, linux]
     runs-on: ubuntu-latest
     steps:
@@ -84,9 +92,15 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          path: source
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* -R "$GITHUB_REPOSITORY" \
-            --title "Horizon NX Companion $GITHUB_REF_NAME" --generate-notes
+          tag="$GITHUB_REF_NAME"
+          [ -n "$RELEASE" ] && tag="v$RELEASE"
+          notes=source/packaging/release-notes.md
+          gh release create "$tag" dist/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Horizon NX Companion $tag" --notes-file "$notes"
