@@ -32,8 +32,13 @@ SD cards there.
 
 Horizon never ships Minecraft's files: they come from your own copy. Install the
 [Horizon launcher](https://playhorizon.dev) on this computer and start it once with your Minecraft
-account; it prepares the files (a folder ending in `horizon-client/26.3`). The companion finds that
-folder by itself, or you choose it with **Choose…**.
+account and press **Prepare**. The files land in
+`~/Library/Application Support/horizon-launcher/versions/<version>/.local/horizon-client/26.3` (`.local` is
+hidden in Finder: Cmd+Shift+. shows it). The companion finds them by itself; with **Choose…** you can
+pick the `horizon-launcher` folder and it looks inside.
+
+`~/Library/Application Support/horizon` is something else: the game's own worlds and settings on the
+Mac (the same layout as `switch/horizon` on the SD card).
 
 ## Using it with the Switch
 

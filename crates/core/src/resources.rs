@@ -21,6 +21,20 @@ pub struct Prepared {
 
 /// Prepared folders under the places the Horizon launcher keeps its data, newest first.
 pub fn find_prepared() -> Vec<Prepared> {
+    let mut found = Vec::new();
+    // The Horizon launcher's: `<data>/horizon-launcher/versions/<tag>/.local/horizon-client/<game>`
+    // (a hidden `.local` folder), and the servers' copy beside it.
+    if let Some(data) = dirs::data_dir() {
+        let launcher = data.join("horizon-launcher");
+        for version in subfolders(&launcher.join("versions")) {
+            for game in subfolders(&version.join(".local/horizon-client")) {
+                search(&game, 0, &mut found);
+            }
+        }
+        for game in subfolders(&launcher.join("server-runtime/game-files/horizon-client")) {
+            search(&game, 0, &mut found);
+        }
+    }
     let mut roots = Vec::new();
     if let Some(data) = dirs::data_dir() {
         roots.push(data.clone());
@@ -30,7 +44,6 @@ pub fn find_prepared() -> Vec<Prepared> {
         roots.push(home.join("Downloads"));
         roots.push(home.join("Desktop"));
     }
-    let mut found = Vec::new();
     for root in roots {
         let Ok(entries) = std::fs::read_dir(&root) else {
             continue;
@@ -43,8 +56,21 @@ pub fn find_prepared() -> Vec<Prepared> {
         }
     }
     found.sort_by_key(|p: &Prepared| std::cmp::Reverse(p.modified));
-    found.dedup_by(|a, b| a.folder == b.folder);
+    let mut seen = std::collections::HashSet::new();
+    found.retain(|p| seen.insert(p.folder.clone()));
     found
+}
+
+fn subfolders(dir: &Path) -> Vec<PathBuf> {
+    std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+                .map(|e| e.path())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn search(dir: &Path, depth: u32, found: &mut Vec<Prepared>) {
@@ -485,5 +511,47 @@ pub fn on_card(card: &SdCard) -> OnCard {
             OnCard::Packed
         }
         _ => OnCard::Stale,
+    }
+}
+
+/// The prepared folder in or under `dir` (a chosen folder may be the launcher's, a version's or
+/// the prepared one itself; the `.local` folder is hidden in Finder).
+pub fn find_in(dir: &Path) -> Option<PathBuf> {
+    if is_prepared(dir) {
+        return Some(dir.to_path_buf());
+    }
+    let mut found = Vec::new();
+    let mut places = vec![dir.to_path_buf(), dir.join("versions")];
+    places.extend(subfolders(&dir.join("versions")));
+    places.extend(subfolders(dir));
+    for place in places {
+        for inner in [
+            place.join(".local/horizon-client"),
+            place.join("horizon-client"),
+            place.clone(),
+        ] {
+            for game in subfolders(&inner) {
+                search(&game, 0, &mut found);
+            }
+        }
+    }
+    found.sort_by_key(|p: &Prepared| std::cmp::Reverse(p.modified));
+    found.into_iter().next().map(|p| p.folder)
+}
+
+#[cfg(test)]
+mod find_tests {
+    #[test]
+    fn a_launcher_version_folder_leads_to_its_prepared_files() {
+        let root = std::env::temp_dir().join(format!("companion-launcher-{}", std::process::id()));
+        let game = root.join("versions/v2026.11.18.1/.local/horizon-client/26.3");
+        std::fs::create_dir_all(&game).unwrap();
+        std::fs::write(game.join(super::MANIFEST), "{}").unwrap();
+        assert_eq!(super::find_in(&root).as_deref(), Some(game.as_path()));
+        assert_eq!(
+            super::find_in(&root.join("versions/v2026.11.18.1")).as_deref(),
+            Some(game.as_path())
+        );
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

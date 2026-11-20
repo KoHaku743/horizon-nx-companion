@@ -535,11 +535,11 @@ impl App {
                 });
             if ui.button("Choose…").clicked()
                 && let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                    if resources::is_prepared(&folder) {
-                        self.source = Some(folder);
+                    if let Some(found) = resources::find_in(&folder) {
+                        self.source = Some(found);
                     } else {
                         self.notice = Some(Err(format!(
-                            "{} isn't a prepared folder: pick the one with {} in it (…/horizon-client/26.3).",
+                            "No prepared files in {} (no {}): pick the Horizon launcher's folder, Library/Application Support/horizon-launcher.",
                             folder.display(),
                             resources::MANIFEST
                         )));
