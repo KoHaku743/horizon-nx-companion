@@ -28,8 +28,10 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+      # The companion's own crates: vendor/horizon is Horizon's code (vendor-horizon.sh), linted
+      # and tested in horizon-nx, and vendored without its tests' dependencies.
+      - run: cargo clippy -p companion-core -p horizon-nx-companion --all-targets --locked -- -D warnings
+      - run: cargo test -p companion-core -p horizon-nx-companion --locked
 
   macos:
     runs-on: macos-latest

@@ -10,6 +10,10 @@ version = "0.3.0"
 # What Horizon's vendored crates inherit (horizon-nx's workspace).
 rust-version = "1.95"
 
+[workspace.lints.rust]
+# Horizon's vendored code names lints of the newer clippy horizon-nx builds with.
+unknown_lints = "allow"
+
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 type_complexity = "allow"

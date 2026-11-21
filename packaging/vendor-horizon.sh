@@ -49,6 +49,21 @@ cp "$src/tools/mixins/narrow-reference-rule.patch" "$dest/tools/mixins/"
 vocab="$dest/crates/horizon-mod-vocab"
 mkdir -p "$vocab/generated"
 cp "$out"/*.rs "$vocab/generated/"
+# The generator writes the crate's own path into #[path]s: a placeholder, which the build script
+# turns into wherever the crate is built.
+python3 - "$vocab/generated" "$(cd "$src" && pwd)/crates/horizon-mod-vocab" <<'PY'
+import pathlib, sys
+generated, crate = pathlib.Path(sys.argv[1]), sys.argv[2]
+for path in generated.glob("*.rs"):
+    text = path.read_text()
+    text = text.replace(crate + "/../../crates/horizon-mod-vocab", "@HORIZON_MOD_VOCAB@")
+    text = text.replace(crate, "@HORIZON_MOD_VOCAB@")
+    path.write_text(text)
+PY
+if grep -rlF "$(cd "$src" && pwd)" "$vocab/generated" >/dev/null; then
+    echo "a generated file still names $src" >&2
+    exit 1
+fi
 cp "$here/packaging/vocab_build.rs" "$vocab/build.rs"
 
 # Horizon's licence (the LGPL, with the GPL it builds on) and the MIT terms of its older code.

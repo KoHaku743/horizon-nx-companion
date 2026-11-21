@@ -1,78 +1,78 @@
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/arm_poses.rs"] mod arm_poses;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/arm_poses.rs"] mod arm_poses;
 #[allow(unused_imports)] pub use arm_poses::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/attributes.rs"] mod attributes;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/attributes.rs"] mod attributes;
 #[allow(unused_imports)] pub use attributes::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/biome_modifiers.rs"] mod biome_modifiers;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/biome_modifiers.rs"] mod biome_modifiers;
 #[allow(unused_imports)] pub use biome_modifiers::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/biome_regions.rs"] mod biome_regions;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/biome_regions.rs"] mod biome_regions;
 #[allow(unused_imports)] pub use biome_regions::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/block_entities.rs"] mod block_entities;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/block_entities.rs"] mod block_entities;
 #[allow(unused_imports)] pub use block_entities::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/blocks.rs"] mod blocks;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/blocks.rs"] mod blocks;
 #[allow(unused_imports)] pub use blocks::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/capabilities.rs"] mod capabilities;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/capabilities.rs"] mod capabilities;
 #[allow(unused_imports)] pub use capabilities::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/capability_registration.rs"] mod capability_registration;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/capability_registration.rs"] mod capability_registration;
 #[allow(unused_imports)] pub use capability_registration::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/client_requirements.rs"] mod client_requirements;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/command_arguments.rs"] mod command_arguments;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/client_requirements.rs"] mod client_requirements;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/command_arguments.rs"] mod command_arguments;
 #[allow(unused_imports)] pub use command_arguments::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/crafting_recipes.rs"] mod crafting_recipes;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/crafting_recipes.rs"] mod crafting_recipes;
 #[allow(unused_imports)] pub use crafting_recipes::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/crash_sections.rs"] mod crash_sections;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/crash_sections.rs"] mod crash_sections;
 #[allow(unused_imports)] pub use crash_sections::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/custom_stats.rs"] mod custom_stats;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/custom_stats.rs"] mod custom_stats;
 #[allow(unused_imports)] pub use custom_stats::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/datapack_registries.rs"] mod datapack_registries;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/datapack_registries.rs"] mod datapack_registries;
 #[allow(unused_imports)] pub use datapack_registries::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/default_capabilities.rs"] mod default_capabilities;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/default_capabilities.rs"] mod default_capabilities;
 #[allow(unused_imports)] pub use default_capabilities::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/dimensions.rs"] mod dimensions;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/dimensions.rs"] mod dimensions;
 #[allow(unused_imports)] pub use dimensions::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/effects.rs"] mod effects;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/effects.rs"] mod effects;
 #[allow(unused_imports)] pub use effects::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/energy.rs"] mod energy;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/entities.rs"] mod entities;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/energy.rs"] mod energy;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/entities.rs"] mod entities;
 #[allow(unused_imports)] pub use entities::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/entity_attributes.rs"] mod entity_attributes;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/entity_attributes.rs"] mod entity_attributes;
 #[allow(unused_imports)] pub use entity_attributes::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/entity_selectors.rs"] mod entity_selectors;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/entity_selectors.rs"] mod entity_selectors;
 #[allow(unused_imports)] pub use entity_selectors::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/entity_types.rs"] mod entity_types;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/entity_types.rs"] mod entity_types;
 #[allow(unused_imports)] pub use entity_types::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/fluids.rs"] mod fluids;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/fluids.rs"] mod fluids;
 #[allow(unused_imports)] pub use fluids::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/game_rules.rs"] mod game_rules;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/game_rules.rs"] mod game_rules;
 #[allow(unused_imports)] pub use game_rules::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/items.rs"] mod items;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/items.rs"] mod items;
 #[allow(unused_imports)] pub use items::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/key_mappings.rs"] mod key_mappings;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/key_mappings.rs"] mod key_mappings;
 #[allow(unused_imports)] pub use key_mappings::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/menus.rs"] mod menus;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/menus.rs"] mod menus;
 #[allow(unused_imports)] pub use menus::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/owned_namespaces.rs"] mod owned_namespaces;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/owned_namespaces.rs"] mod owned_namespaces;
 #[allow(unused_imports)] pub use owned_namespaces::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/particles.rs"] mod particles;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/particles.rs"] mod particles;
 #[allow(unused_imports)] pub use particles::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/payloads.rs"] mod payloads;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/payloads.rs"] mod payloads;
 #[allow(unused_imports)] pub use payloads::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/recipe_books.rs"] mod recipe_books;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/recipe_books.rs"] mod recipe_books;
 #[allow(unused_imports)] pub use recipe_books::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/recipe_serializers.rs"] mod recipe_serializers;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/recipe_serializers.rs"] mod recipe_serializers;
 #[allow(unused_imports)] pub use recipe_serializers::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/registration_access.rs"] mod registration_access;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/registration_access.rs"] mod registration_access;
 #[allow(unused_imports)] pub use registration_access::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/registration_refusal.rs"] mod registration_refusal;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/registration_refusal.rs"] mod registration_refusal;
 #[allow(unused_imports)] pub use registration_refusal::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/settings.rs"] mod settings;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/settings.rs"] mod settings;
 #[allow(unused_imports)] pub use settings::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/shared.rs"] mod shared;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/shared.rs"] mod shared;
 #[allow(unused_imports)] pub use shared::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/spawn_placements.rs"] mod spawn_placements;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/spawn_placements.rs"] mod spawn_placements;
 #[allow(unused_imports)] pub use spawn_placements::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/structures.rs"] mod structures;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/structures.rs"] mod structures;
 #[allow(unused_imports)] pub use structures::*;
-#[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/tickets.rs"] mod tickets;
+#[path = "@HORIZON_MOD_VOCAB@/src/parts/tickets.rs"] mod tickets;
 #[allow(unused_imports)] pub use tickets::*;
 /// What a mod's [`Hooks::register`](crate::Hooks::register) attaches its parts with, and
 /// declares its block entity types and ticket controllers on. A thing takes one part of each
@@ -1177,51 +1177,51 @@ pub mod installation {
             }
         }
     }
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/arm_pose.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/arm_pose.rs"]
     mod token_arm_pose;
     pub use token_arm_pose::arm_pose;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/backend_refs.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/backend_refs.rs"]
     mod token_backend_refs;
     #[cfg(any(test, feature = "testing"))]
     pub use token_backend_refs::backend_ref;
     #[cfg(any(test, feature = "testing"))]
     pub use token_backend_refs::backend_mut_ref;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_entity_declaration.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_entity_declaration.rs"]
     mod token_block_entity_declaration;
     pub use token_block_entity_declaration::block_entity_declaration;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_entity_type_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_entity_type_key.rs"]
     mod token_block_entity_type_key;
     pub use token_block_entity_type_key::block_entity_type_key;
     pub use token_block_entity_type_key::block_entity_type_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_block_entity_type_key::validate_block_entity_type_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_id.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_id.rs"]
     mod token_block_id;
     #[cfg(any(test, feature = "testing"))]
     pub use token_block_id::block_id;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_key.rs"]
     mod token_block_key;
     pub use token_block_key::block_key;
     pub use token_block_key::block_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_block_key::validate_block_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_provider.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_provider.rs"]
     mod token_block_provider;
     pub use token_block_provider::block_provider;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_provider_handler.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_provider_handler.rs"]
     mod token_block_provider_handler;
     pub use token_block_provider_handler::block_provider_handler;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/block_side.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/block_side.rs"]
     mod token_block_side;
     #[cfg(any(test, feature = "testing"))]
     pub use token_block_side::block_side;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/bool_game_rule_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/bool_game_rule_key.rs"]
     mod token_bool_game_rule_key;
     pub use token_bool_game_rule_key::bool_game_rule_key;
     pub use token_bool_game_rule_key::bool_game_rule_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_bool_game_rule_key::validate_bool_game_rule_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/builtin_capabilities.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/builtin_capabilities.rs"]
     mod token_builtin_capabilities;
     pub use token_builtin_capabilities::builtin_block_capabilities;
     pub use token_builtin_capabilities::builtin_item_capability_registered;
@@ -1229,27 +1229,27 @@ pub mod installation {
     pub use token_builtin_capabilities::block_capability_dependency;
     pub use token_builtin_capabilities::block_entity_covers;
     pub use token_builtin_capabilities::builtin_player_inventory_type;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/capability_owner.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/capability_owner.rs"]
     mod token_capability_owner;
     #[cfg(any(test, feature = "testing"))]
     pub use token_capability_owner::capability_is_owned;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/crafting_recipes.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/crafting_recipes.rs"]
     mod token_crafting_recipes;
     pub use token_crafting_recipes::crafting_recipe;
     pub use token_crafting_recipes::crafting_recipe_kinds;
     pub use token_crafting_recipes::recipe_serializer;
     pub use token_crafting_recipes::recipe_serializers;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/datapack_schema.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/datapack_schema.rs"]
     mod token_datapack_schema;
     pub use token_datapack_schema::validate_datapack_schema;
     pub use token_datapack_schema::valid_datapack_id;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/default_capabilities.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/default_capabilities.rs"]
     mod token_default_capabilities;
     pub use token_default_capabilities::block_container;
     pub use token_default_capabilities::block_fluids;
     pub use token_default_capabilities::block_energy;
     pub use token_default_capabilities::item_container_slots;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/dimension_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/dimension_key.rs"]
     mod token_dimension_key;
     #[cfg(any(test, feature = "testing"))]
     pub use token_dimension_key::dimension_key;
@@ -1257,73 +1257,73 @@ pub mod installation {
     pub use token_dimension_key::dimension_key_slot;
     #[cfg(any(test, feature = "testing"))]
     pub use token_dimension_key::validate_dimension_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/effect_id.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/effect_id.rs"]
     mod token_effect_id;
     #[cfg(any(test, feature = "testing"))]
     pub use token_effect_id::effect_id;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/effect_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/effect_key.rs"]
     mod token_effect_key;
     pub use token_effect_key::effect_key;
     pub use token_effect_key::effect_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_effect_key::validate_effect_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/entity_provider.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/entity_provider.rs"]
     mod token_entity_provider;
     pub use token_entity_provider::entity_provider;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/entity_provider_handler.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/entity_provider_handler.rs"]
     mod token_entity_provider_handler;
     pub use token_entity_provider_handler::entity_provider_handler;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/entity_type_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/entity_type_key.rs"]
     mod token_entity_type_key;
     pub use token_entity_type_key::entity_type_key;
     pub use token_entity_type_key::entity_type_key_slot;
     #[cfg(any(test, feature = "testing"))]
     pub use token_entity_type_key::validate_entity_type_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/fluid_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/fluid_key.rs"]
     mod token_fluid_key;
     pub use token_fluid_key::fluid_key;
     pub use token_fluid_key::fluid_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_fluid_key::validate_fluid_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/game_rule_declaration.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/game_rule_declaration.rs"]
     mod token_game_rule_declaration;
     pub use token_game_rule_declaration::game_rule_declaration;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/int_game_rule_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/int_game_rule_key.rs"]
     mod token_int_game_rule_key;
     pub use token_int_game_rule_key::int_game_rule_key;
     pub use token_int_game_rule_key::int_game_rule_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_int_game_rule_key::validate_int_game_rule_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/interaction_payloads.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/interaction_payloads.rs"]
     mod token_interaction_payloads;
     #[cfg(any(test, feature = "testing"))]
     pub use token_interaction_payloads::block_click;
     #[cfg(any(test, feature = "testing"))]
     pub use token_interaction_payloads::item_fished;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/item_id.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/item_id.rs"]
     mod token_item_id;
     #[cfg(any(test, feature = "testing"))]
     pub use token_item_id::item_id;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/item_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/item_key.rs"]
     mod token_item_key;
     pub use token_item_key::item_key;
     pub use token_item_key::item_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_item_key::validate_item_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/item_key_error.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/item_key_error.rs"]
     mod token_item_key_error;
     #[cfg(any(test, feature = "testing"))]
     pub use token_item_key_error::item_key_error;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/item_provider.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/item_provider.rs"]
     mod token_item_provider;
     pub use token_item_provider::item_provider;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/item_provider_handler.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/item_provider_handler.rs"]
     mod token_item_provider_handler;
     pub use token_item_provider_handler::item_provider_handler;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/loaded_mods.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/loaded_mods.rs"]
     mod token_loaded_mods;
     pub use token_loaded_mods::loaded_mods;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/lookup_views.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/lookup_views.rs"]
     mod token_lookup_views;
     #[cfg(any(test, feature = "testing"))]
     pub use token_lookup_views::testing_controllers;
@@ -1335,52 +1335,52 @@ pub mod installation {
     pub use token_lookup_views::check_parts;
     #[cfg(any(test, feature = "testing"))]
     pub use token_lookup_views::empty_pose_table;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/max_providers_at.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/max_providers_at.rs"]
     mod token_max_providers_at;
     pub use token_max_providers_at::max_providers_at;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/mod_entry_id.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/mod_entry_id.rs"]
     mod token_mod_entry_id;
     pub use token_mod_entry_id::mod_entry_id;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/mod_entry_wasm.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/mod_entry_wasm.rs"]
     mod token_mod_entry_wasm;
     pub use token_mod_entry_wasm::mod_entry_wasm;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/overanswered.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/overanswered.rs"]
     mod token_overanswered;
     #[cfg(any(test, feature = "testing"))]
     pub use token_overanswered::overanswered;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/particle_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/particle_key.rs"]
     mod token_particle_key;
     pub use token_particle_key::particle_key;
     pub use token_particle_key::particle_key_slot;
     #[cfg(any(not(target_arch = "wasm32"), test))]
     pub use token_particle_key::validate_particle_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/recipe_book_type.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/recipe_book_type.rs"]
     mod token_recipe_book_type;
     pub use token_recipe_book_type::recipe_book_type;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/requested_block_entity_type_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/requested_block_entity_type_key.rs"]
     mod token_requested_block_entity_type_key;
     #[cfg(any(test, feature = "testing"))]
     pub use token_requested_block_entity_type_key::requested_block_entity_type_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/requested_block_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/requested_block_key.rs"]
     mod token_requested_block_key;
     #[cfg(any(test, feature = "testing"))]
     pub use token_requested_block_key::requested_block_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/resolved_effect_key.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/resolved_effect_key.rs"]
     mod token_resolved_effect_key;
     #[cfg(any(test, feature = "testing"))]
     pub use token_resolved_effect_key::resolved_effect_key;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/tag_merge.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/tag_merge.rs"]
     mod token_tag_merge;
     #[cfg(any(test, feature = "testing"))]
     pub use token_tag_merge::merged_block_rows;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/test_capability.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/test_capability.rs"]
     mod token_test_capability;
     #[cfg(any(test, feature = "testing"))]
     pub use token_test_capability::test_capability;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/ticket_controller.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/ticket_controller.rs"]
     mod token_ticket_controller;
     pub use token_ticket_controller::ticket_controller;
-    #[path = "/home/claude/horizon-nx/crates/horizon-mod-vocab/../../crates/horizon-mod-vocab/src/parts/installation_tokens/unknown_fluid.rs"]
+    #[path = "@HORIZON_MOD_VOCAB@/src/parts/installation_tokens/unknown_fluid.rs"]
     mod token_unknown_fluid;
     #[cfg(any(test, feature = "testing"))]
     pub use token_unknown_fluid::unknown_fluid;
