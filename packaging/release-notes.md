@@ -5,6 +5,7 @@ For [Horizon NX 2.0.0](https://github.com/KoHaku743/horizon-nx/releases/tag/v2.0
 - **Mods and packs** checks mods with Horizon 2.0's own code (the same as the game's Get Mods), so it agrees with the game about which mods the Switch build installs. Mods that run code (WebAssembly mods, such as Zoom 3.0) are marked **Runs code: not for the Switch** once checked: **Check all** finds them before you install anything.
 - Mods and packs installed from the computer show as installed in the game's Get Mods, with its **Update** button when there's a newer version (they're recorded in `mod-browser.json`, as the game records its own).
 - **Free up space** also offers the CPU profiler's report (`cpu-profile.txt`).
+- **Licence:** the companion is now under the GNU LGPL, version 3 or later, like Horizon (whose code it now includes). Everything stays open source; releases up to 0.2.0 were MIT.
 
 ## What was new in 0.2.0
 

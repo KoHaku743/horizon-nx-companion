@@ -70,7 +70,7 @@ packaging/macos/bundle.sh                  # the .app and its zip, on a Mac (CI 
 
 `crates/core` does the work (no window: SD card, `.hzpak`, releases, registry, saves, logs, cleanup),
 `crates/app` is the window (egui). `vendor/horizon/` holds the Horizon crates a mod is checked with
-(`horizon-mod-package` and what it needs, MIT, see `vendor/horizon/LICENSE`), copied from a Horizon NX
+(`horizon-mod-package` and what it needs, LGPL-3.0-or-later, see `vendor/horizon/LICENSE`), copied from a Horizon NX
 release so a mod is checked by the same code as in the game. To move to a newer release, check out
 horizon-nx at its tag and run `packaging/vendor-horizon.sh <that checkout>` (it records the commit in
 `vendor/horizon/COMMIT`).
@@ -79,4 +79,6 @@ horizon-nx at its tag and run `packaging/vendor-horizon.sh <that checkout>` (it 
 
 - Building `horizon.nro` on this computer (native mods compiled into a custom build).
 
-MIT licensed. Not affiliated with Mojang or Microsoft.
+Licensed under the GNU LGPL, version 3 or later ([LICENSE](LICENSE), with the GPL it builds on in
+[LICENSES/](LICENSES/)), as Horizon is. Releases up to 0.2.0 were MIT licensed. Copyright 2026 Ján Karchňák
+(KoHaku743); `vendor/horizon/` is the Horizon contributors'. Not affiliated with Mojang or Microsoft.

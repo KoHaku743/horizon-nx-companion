@@ -5,7 +5,7 @@ members = ["crates/core", "crates/app"]
 
 [workspace.package]
 edition = "2024"
-license = "MIT"
+license = "LGPL-3.0-or-later"
 version = "0.3.0"
 # What Horizon's vendored crates inherit (horizon-nx's workspace).
 rust-version = "1.95"
