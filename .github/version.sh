@@ -3,5 +3,5 @@
 if [ -n "${RELEASE:-}" ]; then echo "$RELEASE"; exit 0; fi
 case "${GITHUB_REF:-}" in
   refs/tags/v*) echo "${GITHUB_REF_NAME#v}" ;;
-  *) echo "0.2.0-dev.${GITHUB_RUN_NUMBER:-0}" ;;
+  *) echo "0.3.0-dev.${GITHUB_RUN_NUMBER:-0}" ;;
 esac

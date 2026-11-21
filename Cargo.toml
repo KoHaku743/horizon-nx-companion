@@ -1,11 +1,20 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/app", "vendor/horizon-mods", "vendor/horizon-shader-api"]
+members = ["crates/core", "crates/app"]
+# Horizon's crates (vendor/horizon, packaging/vendor-horizon.sh) join as path dependencies.
 
 [workspace.package]
 edition = "2024"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
+# What Horizon's vendored crates inherit (horizon-nx's workspace).
+rust-version = "1.95"
+
+[workspace.lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+needless_range_loop = "allow"
+large_enum_variant = "allow"
 
 [profile.release]
 opt-level = 3

@@ -66,6 +66,17 @@ pub fn scan(card: &SdCard) -> Vec<Cleanable> {
         true,
     );
 
+    // Diagnostics a test run turned on (env.txt's BEVY_HORIZON_CPU_PROFILE): rewritten each run.
+    push(
+        "CPU profile".into(),
+        "cpu-profile.txt, the profiler's last report. Written again only when profiling is on.",
+        vec![dir.join("cpu-profile.txt")]
+            .into_iter()
+            .filter(|p| p.is_file())
+            .collect(),
+        true,
+    );
+
     let mut leftovers: Vec<PathBuf> = listing(&dir.join("mod-browser/checked"))
         .into_iter()
         .filter(|p| {

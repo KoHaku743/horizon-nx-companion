@@ -1,6 +1,6 @@
 //! Horizon's mod registry (https://horizon-rust.github.io/horizon-mods/index.json) from the
 //! computer: what the Switch build installs by itself (content mods and resource packs made for
-//! 26.3), checked exactly as the game's Get Mods checks them (`horizon_mods::index::check_file`,
+//! 26.3), checked exactly as the game's Get Mods checks them (`horizon_mod_package::index::check_file`,
 //! the same code), then put on the SD card.
 //!
 //! The computer checks a mod in a fraction of the time the Switch takes, so every mod can be
@@ -8,15 +8,22 @@
 
 use crate::sd::SdCard;
 use crate::{Progress, download, fetch, size_text};
-use horizon_mods::index::{self, Index, Kind, Project, Version};
+use horizon_mod_package::index::{self, Index, Kind, Project, Version};
 use std::path::{Path, PathBuf};
 
 pub const INDEX_URL: &str = "https://horizon-rust.github.io/horizon-mods/index.json";
-/// The Minecraft version the Switch build plays.
-pub const GAME: &str = "26.3";
+/// The Minecraft version the Switch build plays: the vendored Horizon's (its Get Mods' `GAME`).
+pub const GAME: &str = horizon_core::version::VERSION_ID;
 /// Where the game keeps mods (beside `options.txt`), and the file that turns them on.
 pub const MODS_DIR: &str = "horizon-mods";
 pub const MODS_FILE: &str = "horizon-mods.txt";
+/// What Horizon's Get Mods (and the launcher) record of the registry files they installed, beside
+/// `options.txt`: the game reads it for each listing's installed version.
+pub const INSTALLED_FILE: &str = "mod-browser.json";
+/// Why a mod that runs code is refused: the Switch build has no runtime for it.
+pub const CODE_MOD: &str = "it runs code (a WebAssembly or native mod), which the Switch can't run";
+/// The registry's pages, as the game links them.
+const SITE: &str = "https://playhorizon.dev/mods";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OfferKind {
@@ -53,26 +60,27 @@ pub struct Offer {
 pub fn load_index() -> Result<Index, String> {
     let body = fetch(INDEX_URL, 32 << 20)?;
     let text = String::from_utf8(body).map_err(|e| e.to_string())?;
-    Index::parse_lenient(&text).map(|(index, _)| index)
+    Index::parse(&text)
 }
 
-/// The version of `p` the Switch installs, if it's one it can: a content mod (`.hmod` adding
-/// content only) or a resource pack, for this game.
+/// The version of `p` the Switch installs, if it's one it can, by the rule of Horizon NX 2.0's
+/// Get Mods (`mod_registry::installable`): a content mod (its only capability registries) or a
+/// resource pack (a `.zip`), made for this game, with no capability this Horizon doesn't know.
 fn offered<'a>(index: &Index, p: &'a Project) -> Option<(OfferKind, &'a Version)> {
     let kind = match p.kind {
         Kind::Mod => OfferKind::Mod,
         Kind::ResourcePack => OfferKind::ResourcePack,
         _ => return None,
     };
-    let v = index.installable(p, GAME, horizon_mods::api_level::LEVEL)?;
-    let content_only = v
-        .capabilities
-        .iter()
-        .all(|c| *c == horizon_mods::Capability::Registries);
-    if kind == OfferKind::Mod && !(v.file.name.ends_with(".hmod") && content_only) {
-        return None;
-    }
-    Some((kind, v))
+    let v = index.installable(p, GAME)?;
+    let fits = match kind {
+        OfferKind::Mod => {
+            v.capabilities.known() == [horizon_mod_package::Capability::Registries]
+                && v.file.name.ends_with(".hmod")
+        }
+        OfferKind::ResourcePack => v.file.name.ends_with(".zip"),
+    };
+    fits.then_some((kind, v))
 }
 
 fn plain(name: &str) -> bool {
@@ -186,7 +194,18 @@ fn fetch_checked(
     progress.step(format!("Downloading {}", p.name), v.file.size);
     download(url, &part, progress)?;
     progress.step(format!("Checking {}", p.name), 0);
-    match index::check_file(index, p, v, &part) {
+    // The index doesn't say which mods run code (a WebAssembly mod is a `mod` like a content mod):
+    // the package does. The Switch build has no code runtime, so a mod with code is refused here.
+    let checked = index::check_file(index, p, v, &part).and_then(|trust| {
+        if v.file.name.ends_with(".hmod") {
+            let package = horizon_mod_package::Package::read(&part)?;
+            if package.manifest.wasm.is_some() || package.manifest.native.is_some() {
+                return Err(CODE_MOD.into());
+            }
+        }
+        Ok(trust)
+    });
+    match checked {
         Ok(_) => {
             std::fs::rename(&part, checked_path(v)).map_err(|e| e.to_string())?;
             Ok(checked_path(v))
@@ -214,18 +233,20 @@ pub fn check_all(index: &Index, progress: &Progress) -> Result<String, String> {
         })
         .filter(|(_, v)| known(v).is_none())
         .collect();
-    let (mut ok, mut refused, mut failed) = (0, 0, 0);
+    let (mut ok, mut code, mut refused, mut failed) = (0, 0, 0, 0);
     for (i, (p, v)) in todo.iter().enumerate() {
         progress.check()?;
         let _ = i;
         match fetch_checked(index, p, v, progress) {
             Ok(_) => ok += 1,
+            Err(e) if e == CODE_MOD => code += 1,
             Err(_) if refused_path(v).is_file() => refused += 1,
             Err(_) => failed += 1,
         }
     }
     let mut summary = format!(
-        "Checked {} mods: {ok} work on the Switch build, {refused} need a newer Horizon.",
+        "Checked {} mods: {ok} work on the Switch build, {code} run code (which the Switch can't run), \
+         {refused} need a newer Horizon.",
         todo.len()
     );
     if failed > 0 {
@@ -246,7 +267,9 @@ pub fn install(
     let (kind, v) = offered(index, p).ok_or("The Switch build can't install this one.")?;
     let dest = destination(card, kind, p, v)?;
     let file = fetch_checked(index, p, v, progress).map_err(|e| {
-        if refused_path(v).is_file() {
+        if e == CODE_MOD {
+            format!("{} {CODE_MOD}.", p.name)
+        } else if refused_path(v).is_file() {
             format!(
                 "{} needs a newer Horizon than the Switch build: {e}",
                 p.name
@@ -260,6 +283,14 @@ pub fn install(
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
     plain_copy(&file, &dest)?;
+    // Checked a moment ago (or before, and kept): this only reads whose signature it carries.
+    let verified = index::check_file(index, p, v, &file) == Ok(index::Trust::Verified);
+    let relative = dest
+        .strip_prefix(card.horizon())
+        .map_err(|_| "the destination left the game folder".to_string())?
+        .to_string_lossy()
+        .replace('\\', "/");
+    record_installed(&card.horizon(), p, v, kind, &relative, verified)?;
     Ok(match kind {
         OfferKind::Mod => {
             set_mod(card, &p.id, true)?;
@@ -281,6 +312,7 @@ pub fn remove(index: &Index, id: &str, card: &SdCard) -> Result<String, String> 
     if kind == OfferKind::Mod {
         set_mod(card, &p.id, false)?;
     }
+    forget_installed(&card.horizon(), &p.id)?;
     Ok(format!("{} is removed from the SD card.", p.name))
 }
 
@@ -311,6 +343,65 @@ fn set_mod(card: &SdCard, id: &str, on: bool) -> Result<(), String> {
     std::fs::write(&path, out).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// The entries of `home`'s `mod-browser.json` (none when it's missing or unreadable).
+fn installed_entries(home: &Path) -> Vec<serde_json::Value> {
+    std::fs::read_to_string(home.join(INSTALLED_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|json| json["entries"].as_array().cloned())
+        .unwrap_or_default()
+}
+
+fn save_installed(home: &Path, entries: Vec<serde_json::Value>) -> Result<(), String> {
+    let path = home.join(INSTALLED_FILE);
+    let text = serde_json::to_string_pretty(&serde_json::json!({ "entries": entries }))
+        .map_err(|e| e.to_string())?;
+    std::fs::write(&path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Records `v` of `p` as installed at `relative` in `home`, as Horizon's Get Mods records its own
+/// installs (`mod_registry.rs`), replacing an older entry of the project.
+fn record_installed(
+    home: &Path,
+    p: &Project,
+    v: &Version,
+    kind: OfferKind,
+    relative: &str,
+    verified: bool,
+) -> Result<(), String> {
+    let mut entries = installed_entries(home);
+    entries.retain(|e| e["project"].as_str() != Some(p.id.as_str()));
+    entries.push(serde_json::json!({
+        "source": "horizon",
+        "project": p.id,
+        "slug": p.id,
+        "title": p.name,
+        "kind": match kind {
+            OfferKind::Mod => "mod",
+            OfferKind::ResourcePack => "resource-pack",
+        },
+        "version": v.version,
+        "number": v.version,
+        "file": relative,
+        "checksum": format!("SHA-256:{}", v.file.sha256),
+        "page": format!("{SITE}/{}", p.id),
+        "dependency": false,
+        "verdict": if verified { "Verified" } else { "Unsigned" },
+    }));
+    save_installed(home, entries)
+}
+
+/// Drops `id`'s entry from `home`'s `mod-browser.json`, keeping the others.
+fn forget_installed(home: &Path, id: &str) -> Result<(), String> {
+    let mut entries = installed_entries(home);
+    let before = entries.len();
+    entries.retain(|e| e["project"].as_str() != Some(id));
+    if entries.len() == before {
+        return Ok(());
+    }
+    save_installed(home, entries)
+}
+
 /// A line for an offer's size and state, for lists.
 pub fn describe(offer: &Offer) -> String {
     format!(
@@ -325,11 +416,13 @@ pub fn describe(offer: &Offer) -> String {
 mod tests {
     use super::*;
 
-    /// The vendored sample index, with a content-only mod and a resource pack for 26.3.
+    /// Horizon's sample index (horizon-mod-package's tests/index), with a content-only mod and a
+    /// resource pack for 26.3, and its own mod given a capability this Horizon doesn't know.
     fn sample() -> Index {
-        let text = include_str!("../../../vendor/horizon-mods/tests/index/index-v1.json");
+        let text = include_str!("../tests/data/index-v1.json");
         let mut json: serde_json::Value = serde_json::from_str(text).unwrap();
         let projects = json["projects"].as_array_mut().unwrap();
+        projects[0]["versions"][0]["capabilities"] = serde_json::json!(["hud"]);
         let mut content = projects[0].clone();
         content["id"] = "doors".into();
         content["name"] = "Doors".into();
@@ -339,9 +432,10 @@ mod tests {
         pack["kind"] = "resourcepack".into();
         pack["name"] = "Faithful".into();
         pack["versions"][0]["file"]["name"] = "Faithful.zip".into();
+        pack["versions"][0]["capabilities"] = serde_json::json!([]);
         projects.push(content);
         projects.push(pack);
-        Index::parse_lenient(&json.to_string()).unwrap().0
+        Index::parse_local(&json.to_string()).unwrap()
     }
 
     #[test]
@@ -354,7 +448,7 @@ mod tests {
 
         let offers = offers(&index, Some(&card));
         let ids: Vec<&str> = offers.iter().map(|o| o.id.as_str()).collect();
-        // coords_hud runs code (hud, chat): the Switch build doesn't run it.
+        // coords_hud asks for a capability this Horizon doesn't know: not offered.
         assert_eq!(ids.len(), 2, "{ids:?}");
         assert!(ids.contains(&"doors") && ids.contains(&"faithful"));
 

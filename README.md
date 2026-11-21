@@ -13,7 +13,7 @@ are new and not tested on real machines yet: reports welcome.
 | **SD card** | Finds the Switch's SD card (in a card reader, or over USB with hekate's USB tools) and shows what Horizon has on it. **Eject** removes macOS's `._` files first, then ejects. |
 | **Game files** | Copies Minecraft 26.3's files, prepared by the Horizon launcher on this computer, to `switch/horizon/resources/` and packs them into `resources.hzpak`, exactly as the game builds it on its first start, so the Switch starts fast from the first run. Files already on the card aren't copied again. |
 | **Horizon build** | Installs `horizon.nro` from this fork's releases (the checksum is checked). Test builds are behind a switch. |
-| **Mods and packs** | Horizon's mod registry: content mods and resource packs, checked here with the same code as the game's Get Mods (a check takes seconds on a computer), then put on the card and turned on. **Check all** checks every mod at once, so the list says which ones work on the Switch build. Search, Install, Update, Remove. |
+| **Mods and packs** | Horizon's mod registry: content mods and resource packs, checked here with the same code as the game's Get Mods (a check takes seconds on a computer), then put on the card, turned on and recorded where the game's Get Mods sees them. **Check all** checks every mod at once, so the list says which ones work on the Switch build; mods that run code (WebAssembly mods) can't. Search, Install, Update, Remove. |
 | **Worlds** | Backs up the Switch's worlds to `Documents/Horizon Switch Backups`, and copies worlds between Horizon on the Switch and Horizon on this computer (`horizon/saves` in the system's data folder). |
 | **Sync with Horizon** | Mods, resource packs and the server list between Horizon on this computer and Horizon on the Switch, one way at a time. Adds what the other side lacks and updates what differs; never deletes. Only content mods go to the Switch (the Switch build doesn't run mods with code). |
 | **Logs** | Reads the game's logs (errors and warnings only, if you like) and zips them for a bug report. |
@@ -69,8 +69,11 @@ packaging/macos/bundle.sh                  # the .app and its zip, on a Mac (CI 
 ```
 
 `crates/core` does the work (no window: SD card, `.hzpak`, releases, registry, saves, logs, cleanup),
-`crates/app` is the window (egui). `vendor/` holds Horizon's `horizon-mods` and `horizon-shader-api`
-crates (MIT, see `vendor/LICENSE-horizon`), so a mod is checked by the same code as in the game.
+`crates/app` is the window (egui). `vendor/horizon/` holds the Horizon crates a mod is checked with
+(`horizon-mod-package` and what it needs, MIT, see `vendor/horizon/LICENSE`), copied from a Horizon NX
+release so a mod is checked by the same code as in the game. To move to a newer release, check out
+horizon-nx at its tag and run `packaging/vendor-horizon.sh <that checkout>` (it records the commit in
+`vendor/horizon/COMMIT`).
 
 ## Later
 

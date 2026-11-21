@@ -11,7 +11,7 @@ use companion_core::sd::{self, SdCard};
 use companion_core::sync::{self, Direction, Plan as SyncPlan};
 use companion_core::{Progress, cleanup, logs, size_text};
 use eframe::egui::{self, Color32, RichText};
-use horizon_mods::index::Index;
+use horizon_mod_package::index::Index;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -799,6 +799,12 @@ impl App {
                             }
                             OfferState::Available if offer.kind == OfferKind::Mod => {
                                 ui.label(good("Works on the Switch build"));
+                            }
+                            OfferState::Unsupported(why)
+                                if why == companion_core::registry::CODE_MOD =>
+                            {
+                                ui.label(bad("Runs code: not for the Switch"))
+                                    .on_hover_text(why);
                             }
                             OfferState::Unsupported(why) => {
                                 ui.label(bad("Needs a newer Horizon")).on_hover_text(why);

@@ -88,18 +88,18 @@ struct FoundMod {
 }
 
 fn mods_in(home: &Path) -> Vec<FoundMod> {
-    horizon_mods::find(&home.join(MODS_DIR))
+    horizon_mod_package::find(&home.join(MODS_DIR))
         .into_iter()
         .filter(|p| {
             !p.file_name()
                 .is_some_and(|n| is_mac_junk(&n.to_string_lossy()))
         })
         .map(|path| {
-            let read = horizon_mods::Package::read(&path).map(|p| {
+            let read = horizon_mod_package::Package::read(&path).map(|p| {
                 (
                     p.manifest.id.clone(),
                     p.manifest.name.clone(),
-                    p.wasm.is_some(),
+                    p.manifest.wasm.is_some() || p.manifest.native.is_some(),
                 )
             });
             FoundMod { path, read }
@@ -467,16 +467,35 @@ mod tests {
         let mods = computer.join(MODS_DIR);
         std::fs::create_dir_all(&mods).unwrap();
         let content = "id = \"doors\"\nname = \"Doors\"\nversion = \"1.0.0\"\napi = \"0.2\"\ncapabilities = [\"registries\"]\n";
-        let code = "id = \"hud\"\nname = \"HUD\"\nversion = \"1.0.0\"\napi = \"0.1\"\ncapabilities = [\"hud\"]\n";
-        match horizon_mods::Package::write_files(content, None, &[]) {
+        // A wasm mod: its [wasm] section pins mod.wasm's SHA-512.
+        let wasm: &[u8] = b"\0asm\x01\0\0\0";
+        let sha512: String = {
+            use sha2::Digest;
+            sha2::Sha512::digest(wasm)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect()
+        };
+        let code = format!(
+            "id = \"hud\"\nname = \"HUD\"\nversion = \"1.0.0\"\napi = \"0.2\"\ncapabilities = [\"registries\"]\n[wasm]\nsha512 = '{sha512}'\ntoolchain = 'nightly'\nbuilt_with = 'horizon-mod-sdk test'\n"
+        );
+        match horizon_mod_package::Package::write_files(content, &[]) {
             Ok(bytes) => std::fs::write(mods.join("Doors-1.0.hmod"), bytes).unwrap(),
             Err(e) => panic!("{e}"),
         }
-        std::fs::write(
-            mods.join("hud.hmod"),
-            horizon_mods::Package::write(code, b"\0asm\x01\0\0\0").unwrap(),
-        )
-        .unwrap();
+        // Packed by hand: its module isn't one Horizon would load, so the Switch side refuses it
+        // whether it reads as code or not at all. Either way it must not reach the card.
+        {
+            use std::io::Write;
+            let mut zip =
+                zip::ZipWriter::new(std::fs::File::create(mods.join("hud.hmod")).unwrap());
+            let options = zip::write::SimpleFileOptions::default();
+            zip.start_file("horizon-mod.toml", options).unwrap();
+            zip.write_all(code.as_bytes()).unwrap();
+            zip.start_file("mod.wasm", options).unwrap();
+            zip.write_all(wasm).unwrap();
+            zip.finish().unwrap();
+        }
         std::fs::write(computer.join(MODS_FILE), "mod.doors:true\nmod.hud:true\n").unwrap();
         std::fs::write(switch.join(MODS_FILE), "mod.other:false\n").unwrap();
 
