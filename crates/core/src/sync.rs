@@ -8,7 +8,7 @@
 use crate::nbt::{self, Tag};
 use crate::registry::{MODS_DIR, MODS_FILE};
 use crate::sd::is_mac_junk;
-use crate::{Progress, size_text};
+use crate::{Progress, names, size_text};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -19,6 +19,17 @@ pub const SERVERS: &str = "servers.dat";
 pub enum Direction {
     ToSwitch,
     ToComputer,
+}
+
+impl Direction {
+    /// What a file or folder called `name` on the one side is called on the other.
+    pub fn name(self, name: &str) -> String {
+        let name = names::shown(name);
+        match self {
+            Direction::ToSwitch => names::on_card(&name),
+            Direction::ToComputer => name,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,7 +215,7 @@ pub fn plan(from: &Path, to: &Path, direction: Direction) -> Plan {
                 continue;
             }
             // The computer's Horizon may be newer: it decides.
-            Err(_) => (String::new(), file_name.clone(), false),
+            Err(_) => (String::new(), names::shown(&file_name), false),
         };
         if direction == Direction::ToSwitch && code {
             plan.skipped.push((
@@ -216,7 +227,7 @@ pub fn plan(from: &Path, to: &Path, direction: Direction) -> Plan {
         let target = theirs
             .get(&id)
             .cloned()
-            .unwrap_or_else(|| to.join(MODS_DIR).join(&file_name));
+            .unwrap_or_else(|| to.join(MODS_DIR).join(direction.name(&file_name)));
         let exists = target.exists();
         if exists && same_mod(&found.path, &target) {
             continue;
@@ -247,14 +258,14 @@ pub fn plan(from: &Path, to: &Path, direction: Direction) -> Plan {
             if is_mac_junk(&name) || name.starts_with('.') || !is_pack {
                 continue;
             }
-            let target = to.join(PACKS_DIR).join(&name);
+            let target = to.join(PACKS_DIR).join(direction.name(&name));
             let exists = target.exists();
             if exists && same_pack(&path, &target) {
                 continue;
             }
             plan.copies.push(Copy {
                 what: What::Pack,
-                name,
+                name: names::shown(&name),
                 bytes: size_of(&path),
                 from: path,
                 to: target,
@@ -316,7 +327,7 @@ pub fn apply(
                 }
                 .map_err(|e| format!("{}: {e}", copy.to.display()))?;
             }
-            crate::saves::copy_tree(&copy.from, &copy.to, progress)?;
+            crate::saves::copy_tree(&copy.from, &copy.to, direction, progress)?;
         } else {
             copy_file(&copy.from, &copy.to, progress)?;
         }
@@ -457,6 +468,35 @@ mod tests {
         // And back: the Switch's own server goes to the computer.
         let back = super::plan(&switch, &computer, Direction::ToComputer);
         assert_eq!(back.summary(), "1 server");
+        std::fs::remove_dir_all(&computer).unwrap();
+        std::fs::remove_dir_all(&switch).unwrap();
+    }
+
+    #[test]
+    fn non_ascii_names_reach_the_switch_in_the_form_it_lists() {
+        let (computer, switch) = (home("names-computer"), home("names-switch"));
+        std::fs::create_dir_all(computer.join(PACKS_DIR)).unwrap();
+        std::fs::write(computer.join(PACKS_DIR).join("Мир.zip"), b"pack").unwrap();
+        let plan = plan(&computer, &switch, Direction::ToSwitch);
+        apply(&plan, &switch, Direction::ToSwitch, &Progress::new()).unwrap();
+        let on_card = switch.join(PACKS_DIR).join(names::on_card("Мир.zip"));
+        assert!(on_card.is_file());
+        for (from, to, direction) in [
+            (&computer, &switch, Direction::ToSwitch),
+            (&switch, &computer, Direction::ToComputer),
+        ] {
+            assert!(super::plan(from, to, direction).is_empty());
+        }
+
+        let saves = computer.join("saves");
+        std::fs::create_dir_all(saves.join("Мир")).unwrap();
+        std::fs::write(saves.join("Мир/level.dat"), b"world").unwrap();
+        let world = &crate::saves::worlds_in(&saves)[0];
+        let to = switch.join("saves");
+        for expected in ["xn--o0a0dya".to_owned(), names::on_card("Мир (2)")] {
+            crate::saves::copy_world(world, &to, Direction::ToSwitch, &Progress::new()).unwrap();
+            assert!(to.join(expected).join("level.dat").is_file());
+        }
         std::fs::remove_dir_all(&computer).unwrap();
         std::fs::remove_dir_all(&switch).unwrap();
     }

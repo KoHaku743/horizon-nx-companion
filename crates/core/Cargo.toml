@@ -16,5 +16,6 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 dirs = "6"
 fs2 = "0.4"
 flate2 = "1"
+unicode-normalization = "0.1"
 
 [dev-dependencies]

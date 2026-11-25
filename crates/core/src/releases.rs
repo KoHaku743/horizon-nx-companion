@@ -115,14 +115,7 @@ pub fn install(release: &Release, card: &SdCard, progress: &Progress) -> Result<
     let target = dir.join("horizon.nro");
     let _ = std::fs::remove_file(&target);
     std::fs::rename(&fresh, &target).map_err(|e| format!("{}: {e}", target.display()))?;
-    let client = dir.join("client.txt");
-    if !client.exists() {
-        std::fs::write(
-            &client,
-            "This file makes horizon.nro start the game. Without it, it runs a dedicated server.\n",
-        )
-        .map_err(|e| format!("{}: {e}", client.display()))?;
-    }
+    write_client_txt(card)?;
     crate::sd::remove_mac_junk(&dir);
     Ok(format!(
         "Horizon {} is on the SD card{}.",
@@ -133,6 +126,26 @@ pub fn install(release: &Release, card: &SdCard, progress: &Progress) -> Result<
             ""
         }
     ))
+}
+
+/// `client.txt`, if it isn't there.
+pub fn write_client_txt(card: &SdCard) -> Result<(), String> {
+    let client = card.horizon().join("client.txt");
+    if client.exists() {
+        return Ok(());
+    }
+    std::fs::write(
+        &client,
+        "This file makes horizon.nro start the game. Without it, it runs a dedicated server.\n",
+    )
+    .map_err(|e| format!("{}: {e}", client.display()))
+}
+
+/// Whether version `new` is later than `old` ("2.10.0" than "2.9.1"); `false` for a version that
+/// isn't plain numbers (a test build).
+pub fn is_newer(new: &str, old: &str) -> bool {
+    let parts = |v: &str| -> Option<Vec<u64>> { v.split('.').map(|p| p.parse().ok()).collect() };
+    matches!((parts(new), parts(old)), (Some(n), Some(o)) if n > o)
 }
 
 /// The version of the `.nro` on the card, from its NACP (the homebrew menu shows the same).

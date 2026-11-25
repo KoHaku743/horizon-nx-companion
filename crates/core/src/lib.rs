@@ -4,8 +4,10 @@
 //! Every job runs on its own thread and reports through a [`Progress`]; the app only draws it.
 
 pub mod cleanup;
+pub mod health;
 pub mod hzpak;
 pub mod logs;
+pub mod names;
 pub mod nbt;
 pub mod registry;
 pub mod releases;

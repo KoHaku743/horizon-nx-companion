@@ -3,9 +3,10 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use companion_core::health::{self, Check, Fix, Level, Reading};
 use companion_core::registry::{self, Offer, OfferKind, OfferState};
 use companion_core::releases::{self, Release};
-use companion_core::resources::{self, OnCard, Plan, Prepared};
+use companion_core::resources::{self, Age, Plan, Prepared};
 use companion_core::saves::{self, World};
 use companion_core::sd::{self, SdCard};
 use companion_core::sync::{self, Direction, Plan as SyncPlan};
@@ -101,7 +102,7 @@ enum Page {
 
 impl Page {
     const ALL: [(Page, &'static str); 8] = [
-        (Page::Card, "SD card"),
+        (Page::Card, "Overview"),
         (Page::GameFiles, "Game files"),
         (Page::Build, "Horizon build"),
         (Page::Mods, "Mods and packs"),
@@ -138,7 +139,11 @@ struct App {
     source: Option<PathBuf>,
     plan: Slot<Plan>,
     plan_for: Option<(PathBuf, PathBuf)>,
-    on_card: Option<OnCard>,
+    /// The card being read; the pages show the last reading meanwhile.
+    reading: Slot<Reading>,
+    checks: Vec<Check>,
+    source_age: Slot<Age>,
+    source_age_for: Option<PathBuf>,
     installed: Option<String>,
 
     releases: Slot<Vec<Release>>,
@@ -174,7 +179,10 @@ impl App {
             source: None,
             plan: Slot::Idle,
             plan_for: None,
-            on_card: None,
+            reading: Slot::Idle,
+            checks: Vec::new(),
+            source_age: Slot::Idle,
+            source_age_for: None,
             installed: None,
             releases: Slot::Idle,
             test_builds: false,
@@ -203,49 +211,83 @@ impl App {
     }
 
     /// Looks for SD cards again, keeping the chosen one if it's still there.
-    fn find_cards(&mut self) {
+    fn find_cards(&mut self, ctx: &egui::Context) {
         let chosen = self.card().map(|c| c.root.clone());
         self.cards = sd::find();
         self.card = chosen
             .and_then(|root| self.cards.iter().position(|c| c.root == root))
             .or(if self.cards.is_empty() { None } else { Some(0) });
-        self.read_card();
+        self.read_card(ctx);
     }
 
-    /// Reads what's on the chosen card (quick things only).
-    fn read_card(&mut self) {
-        let card = self.card().cloned();
-        self.on_card = card.as_ref().map(resources::on_card);
-        self.installed = card.as_ref().and_then(releases::installed_version);
-        self.switch_worlds = card
-            .as_ref()
-            .map(|c| saves::worlds_in(&saves::switch_saves(c)))
-            .unwrap_or_default();
-        self.computer_worlds = saves::computer_saves()
-            .map(|s| saves::worlds_in(&s))
-            .unwrap_or_default();
-        let home = saves::computer_home();
-        (self.to_switch, self.to_computer) = match (&card, &home) {
-            (Some(card), Some(home)) => (
-                sync::plan(home, &card.horizon(), Direction::ToSwitch),
-                sync::plan(&card.horizon(), home, Direction::ToComputer),
-            ),
-            _ => Default::default(),
+    /// Starts reading what's on the chosen card, forgetting what another card held.
+    fn read_card(&mut self, ctx: &egui::Context) {
+        self.plan = Slot::Idle;
+        self.plan_for = None;
+        self.installed = None;
+        self.checks.clear();
+        self.switch_worlds.clear();
+        self.to_switch = SyncPlan::default();
+        self.to_computer = SyncPlan::default();
+        self.log_files.clear();
+        self.log = None;
+        self.cleanables.clear();
+        self.reading = match self.card().cloned() {
+            Some(card) => Slot::Loading(Loader::start(ctx, move || Ok(health::read(&card)))),
+            None => Slot::Idle,
         };
-        self.log_files = card.as_ref().map(logs::files).unwrap_or_default();
-        self.cleanables = card
-            .as_ref()
-            .map(cleanup::scan)
-            .unwrap_or_default()
+        if self.card().is_some() && matches!(self.releases, Slot::Idle) {
+            self.releases = Slot::Loading(Loader::start(ctx, releases::list));
+        }
+        self.read_offers();
+    }
+
+    /// Takes a finished reading over into the pages.
+    fn show_reading(&mut self) {
+        let Some(r) = self.reading.ready().cloned() else {
+            return;
+        };
+        self.installed = r.installed;
+        self.switch_worlds = r.switch_worlds;
+        self.computer_worlds = r.computer_worlds;
+        self.to_switch = r.to_switch;
+        self.to_computer = r.to_computer;
+        self.log_files = r.log_files;
+        self.cleanables = r
+            .cleanables
             .into_iter()
             .map(|c| {
                 let on = c.suggested;
                 (c, on)
             })
             .collect();
-        self.plan = Slot::Idle;
-        self.plan_for = None;
-        self.read_offers();
+    }
+
+    /// The newest full release, once the list is read.
+    fn newest(&self) -> Option<&Release> {
+        self.releases.ready()?.iter().find(|r| !r.prerelease)
+    }
+
+    fn update_checks(&mut self) {
+        self.checks = self
+            .reading
+            .ready()
+            .map(|r| health::checks(r, self.newest()))
+            .unwrap_or_default();
+    }
+
+    /// The age of the chosen prepared files, read once per folder.
+    fn poll_source_age(&mut self, ctx: &egui::Context) {
+        if self.source != self.source_age_for {
+            self.source_age_for = self.source.clone();
+            self.source_age = match self.source.clone() {
+                Some(source) => {
+                    Slot::Loading(Loader::start(ctx, move || Ok(resources::age(&source))))
+                }
+                None => Slot::Idle,
+            };
+        }
+        self.source_age.poll();
     }
 
     fn read_offers(&mut self) {
@@ -277,7 +319,7 @@ impl App {
     fn poll(&mut self, ctx: &egui::Context) {
         if !self.started {
             self.started = true;
-            self.find_cards();
+            self.find_cards(ctx);
             self.prepared = Slot::Loading(Loader::start(ctx, || Ok(resources::find_prepared())));
         }
         self.prepared.poll();
@@ -286,8 +328,24 @@ impl App {
         {
             self.source = Some(found.folder.clone());
         }
+        self.poll_source_age(ctx);
         self.plan.poll();
+        let pending = |app: &App| {
+            (
+                matches!(app.reading, Slot::Loading(_)),
+                matches!(app.releases, Slot::Loading(_)),
+            )
+        };
+        let before = pending(self);
+        self.reading.poll();
         self.releases.poll();
+        let now = pending(self);
+        if before.0 && !now.0 {
+            self.show_reading();
+        }
+        if before != now {
+            self.update_checks();
+        }
         let had_index = self.index.ready().is_some();
         self.index.poll();
         if !had_index && self.index.ready().is_some() {
@@ -301,9 +359,8 @@ impl App {
             self.job = None;
             self.notice = Some(result);
             match after {
-                After::Card => self.read_card(),
+                After::Card | After::Worlds => self.read_card(ctx),
                 After::Mods => self.read_offers(),
-                After::Worlds => self.read_card(),
             }
         }
         if self.job.is_some() {
@@ -390,11 +447,11 @@ impl App {
                     }
                     if chosen != self.card {
                         self.card = chosen;
-                        self.read_card();
+                        self.read_card(ui.ctx());
                     }
                 });
             if ui.add_enabled(!self.busy(), egui::Button::new("Look again")).clicked() {
-                self.find_cards();
+                self.find_cards(ui.ctx());
             }
             if ui.add_enabled(!self.busy(), egui::Button::new("Choose a drive…")).clicked()
                 && let Some(root) = rfd::FileDialog::new().pick_folder() {
@@ -403,7 +460,7 @@ impl App {
                             self.cards.retain(|c| c.root != card.root);
                             self.cards.push(card);
                             self.card = Some(self.cards.len() - 1);
-                            self.read_card();
+                            self.read_card(ui.ctx());
                         }
                         None => {
                             self.notice = Some(Err(format!(
@@ -423,7 +480,7 @@ impl App {
                         self.notice = Some(sd::eject(&card).map(|_| {
                             format!("{} is ejected: you can unplug it.", card.name)
                         }));
-                        self.find_cards();
+                        self.find_cards(ui.ctx());
                     }
                     if ui.button("Open").clicked() {
                         reveal(&card.horizon());
@@ -483,50 +540,96 @@ impl App {
     }
 
     fn card_page(&mut self, ui: &mut egui::Ui) {
-        ui.heading("SD card");
+        ui.heading("Overview");
         ui.add_space(6.0);
         let Some(card) = self.no_card(ui) else {
             return;
         };
-        egui::Grid::new("card")
-            .num_columns(2)
-            .spacing([16.0, 6.0])
-            .show(ui, |ui| {
-                ui.label("Drive");
-                ui.label(card.root.display().to_string());
-                ui.end_row();
-                ui.label("Horizon");
-                if card.has_horizon {
-                    ui.label(good("switch/horizon is there"));
-                } else {
-                    ui.label(bad("not on this card yet: install a build first"));
-                }
-                ui.end_row();
-                ui.label("Build");
-                ui.label(
-                    self.installed
-                        .clone()
-                        .map_or_else(|| weak("none"), RichText::new),
-                );
-                ui.end_row();
-                ui.label("Game files");
-                ui.label(match self.on_card {
-                    Some(OnCard::Packed) => good("copied and packed: the game starts fast"),
-                    Some(OnCard::Unpacked) => {
-                        bad("copied, not packed: the first start will be slow")
-                    }
-                    Some(OnCard::Stale) => bad("the pack is out of date: pack them again"),
-                    _ => bad("not there: copy them from Game files"),
-                });
-                ui.end_row();
-                ui.label("Worlds");
-                ui.label(format!("{}", self.switch_worlds.len()));
-                ui.end_row();
+        if matches!(self.reading, Slot::Loading(_)) {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.label("Reading the card…");
             });
-        ui.add_space(12.0);
+            return;
+        }
+        if let Slot::Failed(e) = &self.reading {
+            ui.label(bad(e));
+            return;
+        }
+        let wrong = |c: &&Check| c.level != Level::Good;
+        let mut fixes: Vec<Fix> = self
+            .checks
+            .iter()
+            .filter(wrong)
+            .filter_map(|c| c.fix)
+            .filter(|f| self.can_fix(*f))
+            .collect();
+        fixes.sort();
+        if self.checks.iter().all(|c| c.level == Level::Good) {
+            ui.label(good("Ready to play."));
+        } else if fixes.len() > 1 {
+            let label = RichText::new(format!("Fix all {}", fixes.len())).strong();
+            if ui
+                .add_enabled(!self.busy(), egui::Button::new(label))
+                .clicked()
+            {
+                self.fix(fixes, &card);
+            }
+        }
+        ui.add_space(8.0);
+        for check in self.checks.clone() {
+            ui.group(|ui| {
+                ui.set_width(ui.available_width());
+                let title = RichText::new(&check.title).strong();
+                ui.label(match check.level {
+                    Level::Good => title.color(Color32::from_rgb(90, 180, 90)),
+                    Level::Warning => title.color(Color32::from_rgb(215, 160, 60)),
+                    Level::Broken => title.color(Color32::from_rgb(220, 110, 90)),
+                });
+                ui.label(&check.detail);
+                if let Some(fix) = check.fix {
+                    let label = match fix {
+                        Fix::InstallBuild => "Install the newest",
+                        Fix::ClientTxt => "Put it back",
+                        Fix::GameFiles => "Copy and pack",
+                        Fix::HiddenNames => "Rename them",
+                        Fix::MacJunk => "Remove them",
+                    };
+                    let able = !self.busy() && self.can_fix(fix);
+                    if ui.add_enabled(able, egui::Button::new(label)).clicked() {
+                        self.fix(vec![fix], &card);
+                    }
+                    if fix == Fix::GameFiles && self.source.is_none() {
+                        ui.label(weak("No prepared files found on this computer: start the Horizon launcher and press Play once, or choose them on the Game files page."));
+                    }
+                }
+            });
+        }
+        ui.add_space(8.0);
+        ui.label(weak(format!(
+            "{} · {} worlds",
+            card.root.display(),
+            self.switch_worlds.len()
+        )));
         ui.label(weak(
             "Eject the card before you unplug it (or before you leave hekate's USB mode), so nothing is lost.",
         ));
+    }
+
+    /// Whether what `fix` needs is there.
+    fn can_fix(&self, fix: Fix) -> bool {
+        match fix {
+            Fix::InstallBuild => self.newest().is_some(),
+            Fix::GameFiles => self.source.is_some(),
+            _ => true,
+        }
+    }
+
+    fn fix(&mut self, fixes: Vec<Fix>, card: &SdCard) {
+        let (card, newest, source) = (card.clone(), self.newest().cloned(), self.source.clone());
+        self.start("Fixing the card", After::Card, move |p| {
+            health::apply(&fixes, &card, newest.as_ref(), source.as_deref(), p)
+        });
     }
 
     fn game_files_page(&mut self, ui: &mut egui::Ui) {
@@ -575,6 +678,21 @@ impl App {
         let Some(source) = self.source.clone() else {
             return;
         };
+        let age = match self.source_age.ready() {
+            Some(Age::TooOld) => Some(
+                "These files are from before Horizon 2.0: the game would close after loading. Update the Horizon launcher and press Play once, then choose the new ones.",
+            ),
+            Some(Age::OtherMinecraft) => {
+                Some("These files aren't Minecraft 26.3's: Horizon won't start with them.")
+            }
+            Some(Age::Damaged) => {
+                Some("These files are incomplete: prepare them again with the Horizon launcher.")
+            }
+            _ => None,
+        };
+        if let Some(why) = age {
+            ui.label(bad(why));
+        }
         let key = (source.clone(), card.root.clone());
         if self.plan_for.as_ref() != Some(&key) && !self.busy() {
             self.plan_for = Some(key);
@@ -896,7 +1014,7 @@ impl App {
                             .clicked()
                     {
                         self.start(format!("Copying {}", world.name), After::Worlds, move |p| {
-                            saves::copy_world(&world, &to, p)
+                            saves::copy_world(&world, &to, Direction::ToComputer, p)
                         });
                     }
                 });
@@ -914,7 +1032,7 @@ impl App {
                     {
                         let world = world.clone();
                         self.start(format!("Copying {}", world.name), After::Worlds, move |p| {
-                            saves::copy_world(&world, &to, p)
+                            saves::copy_world(&world, &to, Direction::ToSwitch, p)
                         });
                     }
                     ui.label(format!("{} ({})", world.name, size_text(world.bytes)));

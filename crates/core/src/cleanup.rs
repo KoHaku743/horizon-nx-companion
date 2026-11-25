@@ -33,6 +33,9 @@ fn days_ago(time: Option<SystemTime>) -> Option<u64> {
         .map(|d| d.as_secs() / 86_400)
 }
 
+/// The label of macOS's junk files in [`scan`]'s list.
+pub const MAC_JUNK: &str = "macOS metadata files";
+
 /// What could go, biggest first.
 pub fn scan(card: &SdCard) -> Vec<Cleanable> {
     let dir = card.horizon();
@@ -182,7 +185,7 @@ pub fn scan(card: &SdCard) -> Vec<Cleanable> {
     let mut junk = Vec::new();
     collect_junk(&dir, &mut junk);
     push(
-        "macOS metadata files".into(),
+        MAC_JUNK.into(),
         "The ._ files macOS leaves on the card; the Switch doesn't need them.",
         junk,
         true,

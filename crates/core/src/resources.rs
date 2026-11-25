@@ -109,6 +109,38 @@ pub fn is_prepared(folder: &Path) -> bool {
     folder.join(MANIFEST).is_file()
 }
 
+/// Whether today's game starts with the game files in a folder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Age {
+    Current,
+    /// Prepared by a Horizon from before 2.0: the game loads for minutes, then closes
+    /// ("fluid_state_definitions Missing: re-run horizon-prepare").
+    TooOld,
+    /// Of another Minecraft version.
+    OtherMinecraft,
+    /// Files are missing or don't read.
+    Damaged,
+}
+
+/// Checks `folder` by what the game itself refuses: the manifest's data version, then the fluid
+/// table 2.0 needs (the manifest's `schema` didn't change when it came).
+pub fn age(folder: &Path) -> Age {
+    let read = |name: &str| -> Option<serde_json::Value> {
+        serde_json::from_slice(&std::fs::read(folder.join(name)).ok()?).ok()
+    };
+    let Some(manifest) = read(MANIFEST) else {
+        return Age::Damaged;
+    };
+    if manifest["data_version"].as_i64() != Some(i64::from(horizon_core::version::DATA_VERSION)) {
+        return Age::OtherMinecraft;
+    }
+    match read("block-behaviours.json") {
+        Some(blocks) if blocks.get("fluid_state_definitions").is_some() => Age::Current,
+        Some(_) => Age::TooOld,
+        None => Age::Damaged,
+    }
+}
+
 /// One file or folder of the prepared folder, by its path under it (with `/`).
 struct Item {
     rel: String,

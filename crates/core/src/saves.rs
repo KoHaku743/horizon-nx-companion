@@ -3,14 +3,15 @@
 //! newer one may not open).
 
 use crate::sd::{SdCard, is_mac_junk};
-use crate::{Progress, size_text};
+use crate::sync::Direction;
+use crate::{Progress, names, size_text};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct World {
     pub folder: PathBuf,
-    /// The folder's name.
+    /// The folder's name, as the player reads it (see [`names`]).
     pub name: String,
     pub bytes: u64,
     pub modified: Option<std::time::SystemTime>,
@@ -27,7 +28,7 @@ pub fn worlds_in(saves: &Path) -> Vec<World> {
         .map(|e| {
             let folder = e.path();
             World {
-                name: e.file_name().to_string_lossy().into_owned(),
+                name: names::shown(&e.file_name().to_string_lossy()),
                 bytes: folder_size(&folder),
                 modified: std::fs::metadata(folder.join("level.dat"))
                     .and_then(|m| m.modified())
@@ -137,7 +138,10 @@ fn add_folder<W: Write + std::io::Seek>(
             .map_err(|e| e.to_string())?;
         let entries = std::fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         for entry in entries.flatten() {
-            let child = format!("{name}/{}", entry.file_name().to_string_lossy());
+            let child = format!(
+                "{name}/{}",
+                names::shown(&entry.file_name().to_string_lossy())
+            );
             if is_mac_junk(&entry.file_name().to_string_lossy()) {
                 continue;
             }
@@ -155,17 +159,22 @@ fn add_folder<W: Write + std::io::Seek>(
 }
 
 /// Copies a world folder into a `saves` folder, under a name that isn't taken.
-pub fn copy_world(world: &World, to_saves: &Path, progress: &Progress) -> Result<String, String> {
+pub fn copy_world(
+    world: &World,
+    to_saves: &Path,
+    direction: Direction,
+    progress: &Progress,
+) -> Result<String, String> {
     std::fs::create_dir_all(to_saves).map_err(|e| format!("{}: {e}", to_saves.display()))?;
     let mut name = world.name.clone();
     let mut n = 2;
-    while to_saves.join(&name).exists() {
+    while to_saves.join(direction.name(&name)).exists() {
         name = format!("{} ({n})", world.name);
         n += 1;
     }
-    let target = to_saves.join(&name);
+    let target = to_saves.join(direction.name(&name));
     progress.step(format!("Copying {}", world.name), world.bytes);
-    let result = copy_tree(&world.folder, &target, progress);
+    let result = copy_tree(&world.folder, &target, direction, progress);
     if let Err(e) = result {
         let _ = std::fs::remove_dir_all(&target);
         return Err(e);
@@ -173,7 +182,12 @@ pub fn copy_world(world: &World, to_saves: &Path, progress: &Progress) -> Result
     Ok(format!("{} copied as \"{name}\".", world.name))
 }
 
-pub(crate) fn copy_tree(from: &Path, to: &Path, progress: &Progress) -> Result<(), String> {
+pub(crate) fn copy_tree(
+    from: &Path,
+    to: &Path,
+    direction: Direction,
+    progress: &Progress,
+) -> Result<(), String> {
     let mut pending = vec![(from.to_path_buf(), to.to_path_buf())];
     while let Some((from, to)) = pending.pop() {
         progress.check()?;
@@ -186,13 +200,13 @@ pub(crate) fn copy_tree(from: &Path, to: &Path, progress: &Progress) -> Result<(
             if is_mac_junk(&name.to_string_lossy()) || name == "session.lock" {
                 continue;
             }
+            let target = to.join(direction.name(&name.to_string_lossy()));
             if entry.file_type().is_ok_and(|t| t.is_dir()) {
-                pending.push((entry.path(), to.join(&name)));
+                pending.push((entry.path(), target));
             } else {
                 let data = std::fs::read(entry.path())
                     .map_err(|e| format!("{}: {e}", entry.path().display()))?;
-                std::fs::write(to.join(&name), &data)
-                    .map_err(|e| format!("{}: {e}", to.join(&name).display()))?;
+                std::fs::write(&target, &data).map_err(|e| format!("{}: {e}", target.display()))?;
                 progress.advance(data.len() as u64);
             }
         }
