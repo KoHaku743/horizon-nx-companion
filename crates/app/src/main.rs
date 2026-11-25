@@ -678,8 +678,8 @@ impl App {
                 Level::Broken => colours.danger,
             };
             ui.separator();
-            ui.horizontal(|ui| {
-                ui.add_sized([14.0, 40.0], egui::Label::new(RichText::new("●").color(colour)));
+            ui.horizontal_top(|ui| {
+                ui.label(RichText::new("●").color(colour));
                 let button = check.fix.map(|_| 170.0).unwrap_or(0.0);
                 let width = (ui.available_width() - button).max(200.0);
                 ui.allocate_ui(egui::vec2(width, 0.0), |ui| {
@@ -702,7 +702,7 @@ impl App {
                     Fix::HiddenNames => "Rename them",
                     Fix::MacJunk => "Remove them",
                 };
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                     let able = !self.busy() && self.can_fix(fix);
                     if ui.add_enabled(able, egui::Button::new(label)).clicked() {
                         self.fix(vec![fix], &card);
