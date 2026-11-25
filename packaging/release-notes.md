@@ -10,6 +10,7 @@ For [Horizon NX 2.2.1](https://github.com/KoHaku743/horizon-nx/releases/tag/v2.2
 - **Bug reports** include the crash reports (the game's and Atmosphère's), `panic.txt` and `env.txt`.
 - The card is noticed when you plug it in or pull it out, and reading it no longer freezes the window.
 - A new look, light or dark as your system is.
+- **When Horizon's mod registry can't be reached**, Mods and packs shows the last copy of it saved on this computer or the card (as the game's Get Mods does) and says so. Mods checked on this computer before still install.
 
 ## What was new in 0.3.0
 

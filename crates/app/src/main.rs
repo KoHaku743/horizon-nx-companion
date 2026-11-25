@@ -173,6 +173,8 @@ struct App {
     test_builds: bool,
 
     index: Slot<Arc<Index>>,
+    /// Set when the index is a kept copy (the registry is offline).
+    index_note: Arc<Mutex<Option<String>>>,
     offers: Vec<Offer>,
     search: String,
     show_kind: Option<OfferKind>,
@@ -216,6 +218,7 @@ impl App {
             releases: Slot::Idle,
             test_builds: false,
             index: Slot::Idle,
+            index_note: Arc::default(),
             offers: Vec::new(),
             search: String::new(),
             show_kind: None,
@@ -939,14 +942,17 @@ impl App {
         ui.add_space(8.0);
         let card = self.no_card(ui);
         if matches!(self.index, Slot::Idle) {
-            self.index = Slot::Loading(Loader::start(ui.ctx(), || {
-                registry::load_index().map(Arc::new)
+            let (card, note) = (card.clone(), self.index_note.clone());
+            self.index = Slot::Loading(Loader::start(ui.ctx(), move || {
+                let (index, kept) = registry::load_index_or_kept(card.as_ref())?;
+                *note.lock().unwrap_or_else(|e| e.into_inner()) = kept;
+                Ok(Arc::new(index))
             }));
         }
         let index = match &self.index {
             Slot::Ready(index) => index.clone(),
             Slot::Failed(e) => {
-                ui.label(bad(format!("Couldn't read the registry: {e}")));
+                ui.label(bad(e));
                 if ui.button("Try again").clicked() {
                     self.index = Slot::Idle;
                 }
@@ -957,6 +963,20 @@ impl App {
                 return;
             }
         };
+        let note = self
+            .index_note
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if let Some(note) = note {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(RichText::new(note).color(theme::colours().warn));
+                if ui.small_button("Try again").clicked() {
+                    self.index = Slot::Idle;
+                }
+            });
+            ui.add_space(6.0);
+        }
         ui.horizontal(|ui| {
             ui.label("Search:");
             ui.text_edit_singleline(&mut self.search);

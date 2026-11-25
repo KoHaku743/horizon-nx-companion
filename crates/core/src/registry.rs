@@ -63,6 +63,65 @@ pub fn load_index() -> Result<Index, String> {
     Index::parse(&text)
 }
 
+/// Where the game keeps its last copy of the index, in its home folder (`mod_registry::CACHE`).
+pub const GAME_CACHE: &str = "mod-browser/horizon-index.json";
+
+/// The companion's own last copy.
+fn saved_index() -> PathBuf {
+    checked_dir().with_file_name("index.json")
+}
+
+/// The index, as the game reads it: from the registry, kept for later; when the registry can't
+/// be reached, the newest copy kept here, by Horizon on this computer or by the game on `card`.
+/// The note says when it's a kept copy.
+pub fn load_index_or_kept(card: Option<&SdCard>) -> Result<(Index, Option<String>), String> {
+    let online = fetch(INDEX_URL, 32 << 20)
+        .and_then(|body| String::from_utf8(body).map_err(|e| e.to_string()));
+    let failed = match online.and_then(|text| Index::parse(&text).map(|i| (i, text))) {
+        Ok((index, text)) => {
+            let path = saved_index();
+            if let Some(dir) = path.parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
+            let _ = std::fs::write(&path, text);
+            return Ok((index, None));
+        }
+        Err(e) => e,
+    };
+    let mut kept: Vec<PathBuf> = vec![saved_index()];
+    kept.extend(crate::saves::computer_home().map(|h| h.join(GAME_CACHE)));
+    kept.extend(card.map(|c| c.horizon().join(GAME_CACHE)));
+    newest_kept(&kept)
+        .map(|(index, age)| {
+            let note = format!(
+                "Horizon's mod registry can't be reached ({failed}), so this is the copy saved {age}. Mods checked on this computer before can still be installed; the others can't be downloaded until the registry is back."
+            );
+            (index, Some(note))
+        })
+        .ok_or_else(|| {
+            format!("{failed}. Horizon's mod registry can't be reached, and no copy of it was saved on this computer or the card.")
+        })
+}
+
+/// The newest of `paths` that reads as an index, and how old it is ("3 days ago").
+fn newest_kept(paths: &[PathBuf]) -> Option<(Index, String)> {
+    let mut found: Vec<(std::time::SystemTime, &PathBuf)> = paths
+        .iter()
+        .filter_map(|p| Some((std::fs::metadata(p).ok()?.modified().ok()?, p)))
+        .collect();
+    found.sort_by_key(|(time, _)| std::cmp::Reverse(*time));
+    found.into_iter().find_map(|(time, path)| {
+        let index = Index::parse(&std::fs::read_to_string(path).ok()?).ok()?;
+        let days = time.elapsed().map_or(0, |e| e.as_secs() / 86_400);
+        let age = match days {
+            0 => "in the last day".to_owned(),
+            1 => "a day ago".to_owned(),
+            n => format!("{n} days ago"),
+        };
+        Some((index, age))
+    })
+}
+
 /// The version of `p` the Switch installs, if it's one it can, by the rule of Horizon NX 2.0's
 /// Get Mods (`mod_registry::installable`): a content mod (its only capability registries) or a
 /// resource pack (a `.zip`), made for this game, with no capability this Horizon doesn't know.
@@ -436,6 +495,25 @@ mod tests {
         projects.push(content);
         projects.push(pack);
         Index::parse_local(&json.to_string()).unwrap()
+    }
+
+    #[test]
+    fn the_newest_kept_index_that_reads_is_taken() {
+        let dir = std::env::temp_dir().join(format!("companion-kept-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let real = include_str!("../tests/data/index-v1.json");
+        let (old, broken) = (dir.join("old.json"), dir.join("broken.json"));
+        std::fs::write(&old, real).unwrap();
+        std::fs::write(&broken, "<html>404</html>").unwrap();
+        let missing = dir.join("missing.json");
+        let (index, _) = super::newest_kept(&[missing, broken, old]).unwrap();
+        assert_eq!(
+            index.projects.len(),
+            Index::parse(real).unwrap().projects.len()
+        );
+        assert!(super::newest_kept(&[dir.join("broken.json")]).is_none());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
