@@ -3,20 +3,38 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod theme;
+
 use companion_core::health::{self, Check, Fix, Level, Reading};
 use companion_core::registry::{self, Offer, OfferKind, OfferState};
 use companion_core::releases::{self, Release};
 use companion_core::resources::{self, Age, Plan, Prepared};
-use companion_core::saves::{self, World};
+use companion_core::saves::{self, Backup, World};
 use companion_core::sd::{self, SdCard};
 use companion_core::sync::{self, Direction, Plan as SyncPlan};
 use companion_core::{Progress, cleanup, logs, size_text};
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use horizon_mod_package::index::Index;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+/// An empty card reader must not open Windows' "no disk in the drive" box each time the drives are
+/// looked through.
+#[cfg(windows)]
+fn no_disk_boxes() {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn SetErrorMode(mode: u32) -> u32;
+    }
+    const SEM_FAILCRITICALERRORS: u32 = 1;
+    // SAFETY: only sets a flag of this process.
+    unsafe { SetErrorMode(SEM_FAILCRITICALERRORS) };
+}
+
 fn main() -> eframe::Result {
+    #[cfg(windows)]
+    no_disk_boxes();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Horizon NX Companion")
@@ -32,7 +50,10 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Horizon NX Companion",
         options,
-        Box::new(|_| Ok(Box::new(App::new()))),
+        Box::new(|cc| {
+            theme::install(&cc.egui_ctx);
+            Ok(Box::new(App::new()))
+        }),
     )
 }
 
@@ -117,6 +138,8 @@ impl Page {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum After {
     Card,
+    /// The card may be gone: look for cards again.
+    Cards,
     Mods,
     Worlds,
 }
@@ -156,6 +179,12 @@ struct App {
 
     switch_worlds: Vec<World>,
     computer_worlds: Vec<World>,
+    backups: Vec<Backup>,
+    /// The worlds' icons, by folder (None: not a picture).
+    icons: HashMap<PathBuf, Option<egui::TextureHandle>>,
+    /// The last look for cards in the background, and when it started.
+    watch: Slot<Vec<SdCard>>,
+    watched: std::time::Instant,
     to_switch: SyncPlan,
     to_computer: SyncPlan,
 
@@ -192,6 +221,10 @@ impl App {
             show_kind: None,
             switch_worlds: Vec::new(),
             computer_worlds: Vec::new(),
+            backups: Vec::new(),
+            icons: HashMap::new(),
+            watch: Slot::Idle,
+            watched: std::time::Instant::now(),
             to_switch: SyncPlan::default(),
             to_computer: SyncPlan::default(),
             log_files: Vec::new(),
@@ -212,8 +245,21 @@ impl App {
 
     /// Looks for SD cards again, keeping the chosen one if it's still there.
     fn find_cards(&mut self, ctx: &egui::Context) {
+        let found = sd::find();
+        self.take_cards(ctx, found);
+    }
+
+    /// `found`, and the drives the player chose that are still there.
+    fn take_cards(&mut self, ctx: &egui::Context, mut found: Vec<SdCard>) {
         let chosen = self.card().map(|c| c.root.clone());
-        self.cards = sd::find();
+        let known: Vec<PathBuf> = found.iter().map(|c| c.root.clone()).collect();
+        found.extend(
+            self.cards
+                .iter()
+                .filter(|c| !known.contains(&c.root))
+                .filter_map(|c| SdCard::at(&c.root)),
+        );
+        self.cards = found;
         self.card = chosen
             .and_then(|root| self.cards.iter().position(|c| c.root == root))
             .or(if self.cards.is_empty() { None } else { Some(0) });
@@ -250,6 +296,8 @@ impl App {
         self.installed = r.installed;
         self.switch_worlds = r.switch_worlds;
         self.computer_worlds = r.computer_worlds;
+        self.backups = r.backups;
+        self.icons.clear();
         self.to_switch = r.to_switch;
         self.to_computer = r.to_computer;
         self.log_files = r.log_files;
@@ -261,6 +309,33 @@ impl App {
                 (c, on)
             })
             .collect();
+    }
+
+    /// Notices a card that's plugged in or pulled out (not while a job runs).
+    fn watch_cards(&mut self, ctx: &egui::Context) {
+        const EVERY: std::time::Duration = std::time::Duration::from_secs(3);
+        self.watch.poll();
+        if self.busy() {
+            // A look from before the job says nothing about after it.
+            self.watch = Slot::Idle;
+            self.watched = std::time::Instant::now();
+            return;
+        }
+        if matches!(self.watch, Slot::Ready(_) | Slot::Failed(_))
+            && let Slot::Ready(found) = std::mem::replace(&mut self.watch, Slot::Idle)
+        {
+            let gone = self.cards.iter().any(|c| !c.root.is_dir());
+            let new = found
+                .iter()
+                .any(|f| !self.cards.iter().any(|c| c.root == f.root));
+            if gone || new {
+                self.take_cards(ctx, found);
+            }
+        } else if matches!(self.watch, Slot::Idle) && self.watched.elapsed() >= EVERY {
+            self.watched = std::time::Instant::now();
+            self.watch = Slot::Loading(Loader::start(ctx, || Ok(sd::find())));
+        }
+        ctx.request_repaint_after(EVERY);
     }
 
     /// The newest full release, once the list is read.
@@ -329,6 +404,7 @@ impl App {
             self.source = Some(found.folder.clone());
         }
         self.poll_source_age(ctx);
+        self.watch_cards(ctx);
         self.plan.poll();
         let pending = |app: &App| {
             (
@@ -360,6 +436,7 @@ impl App {
             self.notice = Some(result);
             match after {
                 After::Card | After::Worlds => self.read_card(ctx),
+                After::Cards => self.find_cards(ctx),
                 After::Mods => self.read_offers(),
             }
         }
@@ -373,19 +450,24 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll(&ctx);
+        theme::follow(&ctx);
 
         egui::Panel::top("card").show(ui, |ui| self.card_bar(ui));
         egui::Panel::bottom("job").show(ui, |ui| self.job_bar(ui));
-        egui::Panel::left("pages").exact_size(170.0).show(ui, |ui| {
-            ui.add_space(8.0);
+        egui::Panel::left("pages").exact_size(184.0).show(ui, |ui| {
+            ui.add_space(10.0);
             for (page, label) in Page::ALL {
-                if ui
-                    .add_sized(
-                        [150.0, 28.0],
-                        egui::Button::selectable(self.page == page, label),
-                    )
-                    .clicked()
-                {
+                let wrong =
+                    page == Page::Card && self.checks.iter().any(|c| c.level == Level::Broken);
+                let text = if wrong {
+                    bad(label)
+                } else {
+                    RichText::new(label)
+                };
+                let button = theme::page_button(text, self.page == page)
+                    .min_size(egui::vec2(ui.available_width(), 32.0))
+                    .right_text("");
+                if ui.add(button).clicked() {
                     self.page = page;
                 }
             }
@@ -418,16 +500,24 @@ fn reveal(path: &Path) {
     let _ = std::process::Command::new(program).arg(path).spawn();
 }
 
+fn days_ago(time: std::time::SystemTime) -> String {
+    match time.elapsed().map_or(0, |e| e.as_secs() / 86_400) {
+        0 => "played in the last day".into(),
+        1 => "played 1 day ago".into(),
+        n => format!("played {n} days ago"),
+    }
+}
+
 fn weak(text: impl Into<String>) -> RichText {
     RichText::new(text).weak()
 }
 
 fn good(text: impl Into<String>) -> RichText {
-    RichText::new(text).color(Color32::from_rgb(90, 180, 90))
+    RichText::new(text).color(theme::colours().success)
 }
 
 fn bad(text: impl Into<String>) -> RichText {
-    RichText::new(text).color(Color32::from_rgb(220, 110, 90))
+    RichText::new(text).color(theme::colours().danger)
 }
 
 impl App {
@@ -476,11 +566,14 @@ impl App {
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.add_enabled(!self.busy(), egui::Button::new("Eject")).clicked() {
-                        sd::remove_mac_junk(&card.horizon());
-                        self.notice = Some(sd::eject(&card).map(|_| {
-                            format!("{} is ejected: you can unplug it.", card.name)
-                        }));
-                        self.find_cards(ui.ctx());
+                        let card = card.clone();
+                        self.start("Ejecting", After::Cards, move |p| {
+                            p.step("Removing macOS's hidden files", 0);
+                            sd::remove_mac_junk(&card.horizon());
+                            p.step("Ejecting", 0);
+                            sd::eject(&card)?;
+                            Ok(format!("{} is ejected: you can unplug it.", card.name))
+                        });
                     }
                     if ui.button("Open").clicked() {
                         reveal(&card.horizon());
@@ -534,7 +627,7 @@ impl App {
     fn no_card(&self, ui: &mut egui::Ui) -> Option<SdCard> {
         let card = self.card().cloned();
         if card.is_none() {
-            ui.label("Put the Switch's SD card in this computer (or start hekate's USB tools: Tools > USB Tools > SD Card), then press Look again.");
+            ui.label("Put the Switch's SD card in this computer (or start hekate's USB tools: Tools > USB Tools > SD Card). It shows up here by itself.");
         }
         card
     }
@@ -568,9 +661,9 @@ impl App {
         if self.checks.iter().all(|c| c.level == Level::Good) {
             ui.label(good("Ready to play."));
         } else if fixes.len() > 1 {
-            let label = RichText::new(format!("Fix all {}", fixes.len())).strong();
+            let label = format!("Fix all {}", fixes.len());
             if ui
-                .add_enabled(!self.busy(), egui::Button::new(label))
+                .add_enabled(!self.busy(), theme::main_button(label))
                 .clicked()
             {
                 self.fix(fixes, &card);
@@ -578,33 +671,46 @@ impl App {
         }
         ui.add_space(8.0);
         for check in self.checks.clone() {
-            ui.group(|ui| {
-                ui.set_width(ui.available_width());
-                let title = RichText::new(&check.title).strong();
-                ui.label(match check.level {
-                    Level::Good => title.color(Color32::from_rgb(90, 180, 90)),
-                    Level::Warning => title.color(Color32::from_rgb(215, 160, 60)),
-                    Level::Broken => title.color(Color32::from_rgb(220, 110, 90)),
+            let colours = theme::colours();
+            let colour = match check.level {
+                Level::Good => colours.success,
+                Level::Warning => colours.warn,
+                Level::Broken => colours.danger,
+            };
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.add_sized([14.0, 40.0], egui::Label::new(RichText::new("●").color(colour)));
+                let button = check.fix.map(|_| 170.0).unwrap_or(0.0);
+                let width = (ui.available_width() - button).max(200.0);
+                ui.allocate_ui(egui::vec2(width, 0.0), |ui| {
+                    ui.vertical(|ui| {
+                        ui.set_width(width);
+                        ui.label(RichText::new(&check.title).strong());
+                        ui.label(weak(&check.detail));
+                        if check.fix == Some(Fix::GameFiles) && self.source.is_none() {
+                            ui.label(weak("No prepared files found on this computer: start the Horizon launcher and press Play once, or choose them on the Game files page."));
+                        }
+                    });
                 });
-                ui.label(&check.detail);
-                if let Some(fix) = check.fix {
-                    let label = match fix {
-                        Fix::InstallBuild => "Install the newest",
-                        Fix::ClientTxt => "Put it back",
-                        Fix::GameFiles => "Copy and pack",
-                        Fix::HiddenNames => "Rename them",
-                        Fix::MacJunk => "Remove them",
-                    };
+                let Some(fix) = check.fix else {
+                    return;
+                };
+                let label = match fix {
+                    Fix::InstallBuild => "Install the newest",
+                    Fix::ClientTxt => "Put it back",
+                    Fix::GameFiles => "Copy and pack",
+                    Fix::HiddenNames => "Rename them",
+                    Fix::MacJunk => "Remove them",
+                };
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let able = !self.busy() && self.can_fix(fix);
                     if ui.add_enabled(able, egui::Button::new(label)).clicked() {
                         self.fix(vec![fix], &card);
                     }
-                    if fix == Fix::GameFiles && self.source.is_none() {
-                        ui.label(weak("No prepared files found on this computer: start the Horizon launcher and press Play once, or choose them on the Game files page."));
-                    }
-                }
+                });
             });
         }
+        ui.separator();
         ui.add_space(8.0);
         ui.label(weak(format!(
             "{} · {} worlds",
@@ -720,10 +826,7 @@ impl App {
                 }
                 ui.add_space(6.0);
                 if ui
-                    .add_enabled(
-                        room && !self.busy(),
-                        egui::Button::new(RichText::new("Copy and pack").strong()),
-                    )
+                    .add_enabled(room && !self.busy(), theme::main_button("Copy and pack"))
                     .clicked()
                 {
                     self.start("Game files", After::Card, move |p| {
@@ -973,71 +1076,179 @@ impl App {
     fn worlds_page(&mut self, ui: &mut egui::Ui) {
         ui.heading("Worlds");
         ui.label(weak(
-            "Copy worlds between Horizon on the Switch and Horizon on this computer: they're the same worlds, so you can carry on where you left off. A copy never replaces a world: one with the same name gets a number.",
+            "Copy worlds between Horizon on the Switch and Horizon on this computer, and back them up. Nothing is ever replaced: a world whose name is taken gets a number.",
         ));
         ui.add_space(8.0);
         let Some(card) = self.no_card(ui) else {
             return;
         };
+        if matches!(self.reading, Slot::Loading(_)) {
+            ui.spinner();
+            return;
+        }
+        let computer = saves::computer_saves();
+        let switch = saves::switch_saves(&card);
+
         ui.horizontal(|ui| {
-            if ui
-                .add_enabled(
-                    !self.busy() && !self.switch_worlds.is_empty(),
-                    egui::Button::new("Back up the Switch's worlds"),
-                )
-                .clicked()
+            ui.label(RichText::new("On the Switch").strong());
+            if !self.switch_worlds.is_empty()
+                && ui
+                    .add_enabled(!self.busy(), egui::Button::new("Back up all"))
+                    .clicked()
             {
-                let card = card.clone();
+                let worlds = self.switch_worlds.clone();
                 self.start("Backing up", After::Worlds, move |p| {
-                    saves::backup(&card, p)
+                    saves::backup(&worlds, p)
                 });
             }
-            if ui.button("Open backups").clicked() {
+        });
+        if self.switch_worlds.is_empty() {
+            ui.label(weak("No worlds."));
+        }
+        for world in self.switch_worlds.clone() {
+            self.world_row(ui, &world, |app, ui| {
+                if let Some(to) = computer.clone()
+                    && ui
+                        .add_enabled(!app.busy(), egui::Button::new("Copy to computer"))
+                        .clicked()
+                {
+                    let world = world.clone();
+                    app.start(
+                        format!("Copying {}", world.title),
+                        After::Worlds,
+                        move |p| saves::copy_world(&world, &to, Direction::ToComputer, p),
+                    );
+                }
+                if ui
+                    .add_enabled(!app.busy(), egui::Button::new("Back up"))
+                    .clicked()
+                {
+                    let one = [world.clone()];
+                    app.start(
+                        format!("Backing up {}", world.title),
+                        After::Worlds,
+                        move |p| saves::backup(&one, p),
+                    );
+                }
+            });
+        }
+
+        ui.add_space(16.0);
+        ui.label(RichText::new("On this computer (Horizon)").strong());
+        if self.computer_worlds.is_empty() {
+            ui.label(weak("No worlds."));
+        }
+        for world in self.computer_worlds.clone() {
+            self.world_row(ui, &world, |app, ui| {
+                if ui
+                    .add_enabled(!app.busy(), egui::Button::new("Copy to Switch"))
+                    .clicked()
+                {
+                    let (world, to) = (world.clone(), switch.clone());
+                    app.start(
+                        format!("Copying {}", world.title),
+                        After::Worlds,
+                        move |p| saves::copy_world(&world, &to, Direction::ToSwitch, p),
+                    );
+                }
+            });
+        }
+
+        ui.add_space(16.0);
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Backups").strong());
+            if ui.small_button("Open folder").clicked() {
                 let dir = saves::backup_dir();
                 let _ = std::fs::create_dir_all(&dir);
                 reveal(&dir);
             }
         });
-        ui.add_space(8.0);
-        let computer = saves::computer_saves();
-        ui.columns(2, |cols| {
-            cols[0].label(RichText::new("On the Switch").strong());
-            if self.switch_worlds.is_empty() {
-                cols[0].label(weak("No worlds."));
+        if self.backups.is_empty() {
+            ui.label(weak("No backups yet."));
+        }
+        for backup in self.backups.clone() {
+            let name = backup.path.file_stem().unwrap_or_default();
+            egui::CollapsingHeader::new(format!(
+                "{} · {}",
+                name.to_string_lossy(),
+                size_text(backup.bytes)
+            ))
+            .id_salt(&backup.path)
+            .show(ui, |ui| {
+                for world in &backup.worlds {
+                    ui.horizontal(|ui| {
+                        ui.label(world);
+                        let sides = [
+                            (
+                                "Restore to Switch",
+                                Some(switch.clone()),
+                                Direction::ToSwitch,
+                            ),
+                            (
+                                "Restore to computer",
+                                computer.clone(),
+                                Direction::ToComputer,
+                            ),
+                        ];
+                        for (label, to, direction) in sides {
+                            let Some(to) = to else {
+                                continue;
+                            };
+                            if ui
+                                .add_enabled(!self.busy(), egui::Button::new(label))
+                                .clicked()
+                            {
+                                let (path, world) = (backup.path.clone(), world.clone());
+                                self.start(format!("Restoring {world}"), After::Worlds, move |p| {
+                                    saves::restore(&path, &world, &to, direction, p)
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    /// A world's icon, names and details, with `buttons` at the right.
+    fn world_row(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &World,
+        buttons: impl FnOnce(&mut Self, &mut egui::Ui),
+    ) {
+        ui.separator();
+        ui.horizontal(|ui| {
+            let size = egui::vec2(40.0, 40.0);
+            let icon = self
+                .icons
+                .entry(world.folder.clone())
+                .or_insert_with(|| theme::picture(ui.ctx(), world.icon.as_deref()?));
+            match icon {
+                Some(texture) => {
+                    ui.image((texture.id(), size));
+                }
+                None => {
+                    ui.allocate_space(size);
+                }
             }
-            for world in self.switch_worlds.clone() {
-                cols[0].horizontal(|ui| {
-                    ui.label(format!("{} ({})", world.name, size_text(world.bytes)));
-                    if let Some(to) = computer.clone()
-                        && ui
-                            .add_enabled(!self.busy(), egui::Button::new("To computer →"))
-                            .clicked()
-                    {
-                        self.start(format!("Copying {}", world.name), After::Worlds, move |p| {
-                            saves::copy_world(&world, &to, Direction::ToComputer, p)
-                        });
-                    }
-                });
-            }
-            cols[1].label(RichText::new("On this computer (Horizon)").strong());
-            if self.computer_worlds.is_empty() {
-                cols[1].label(weak("No worlds."));
-            }
-            for world in self.computer_worlds.clone() {
-                cols[1].horizontal(|ui| {
-                    let to = saves::switch_saves(&card);
-                    if ui
-                        .add_enabled(!self.busy(), egui::Button::new("← To Switch"))
-                        .clicked()
-                    {
-                        let world = world.clone();
-                        self.start(format!("Copying {}", world.name), After::Worlds, move |p| {
-                            saves::copy_world(&world, &to, Direction::ToSwitch, p)
-                        });
-                    }
-                    ui.label(format!("{} ({})", world.name, size_text(world.bytes)));
-                });
-            }
+            ui.vertical(|ui| {
+                ui.label(RichText::new(&world.title).strong());
+                let mut details = vec![size_text(world.bytes)];
+                if !world.kind.is_empty() {
+                    details.insert(0, world.kind.clone());
+                }
+                if let Some(played) = world.modified {
+                    details.push(days_ago(played));
+                }
+                if world.name != world.title {
+                    details.push(world.name.clone());
+                }
+                ui.label(weak(details.join(" · ")));
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                buttons(self, ui)
+            });
         });
     }
 

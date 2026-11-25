@@ -4,7 +4,7 @@ use crate::cleanup::{self, Cleanable};
 use crate::logs::{self, Cause};
 use crate::releases::{self, Release};
 use crate::resources::{self, Age, OnCard};
-use crate::saves::{self, World};
+use crate::saves::{self, Backup, World};
 use crate::sd::SdCard;
 use crate::sync::{self, Direction};
 use crate::{Progress, names, size_text};
@@ -23,6 +23,7 @@ pub struct Reading {
     pub causes: Vec<Cause>,
     pub switch_worlds: Vec<World>,
     pub computer_worlds: Vec<World>,
+    pub backups: Vec<Backup>,
     pub to_switch: sync::Plan,
     pub to_computer: sync::Plan,
     pub log_files: Vec<PathBuf>,
@@ -52,6 +53,7 @@ pub fn read(card: &SdCard) -> Reading {
         computer_worlds: saves::computer_saves()
             .map(|s| saves::worlds_in(&s))
             .unwrap_or_default(),
+        backups: saves::backups(),
         to_switch,
         to_computer,
         log_files: logs::files(card),
@@ -175,7 +177,7 @@ pub fn checks(r: &Reading, newest: Option<&Release>) -> Vec<Check> {
             Level::Warning,
             "Names the Switch can't see",
             format!(
-                "{} files or folders have letters outside plain Latin, so the game doesn't list them. They can be renamed the way Horizon NX 2.2 keeps such names; the game then shows them as they are.",
+                "Files or folders with letters outside plain Latin, which the game doesn't list: {}. They can be renamed the way Horizon NX 2.2 keeps such names; the game then shows them as they are.",
                 r.hidden
             ),
             Some(Fix::HiddenNames),

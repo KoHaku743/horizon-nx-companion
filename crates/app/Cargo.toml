@@ -13,6 +13,8 @@ path = "src/main.rs"
 companion-core = { path = "../core" }
 eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"] }
 rfd = "0.18"
+# The worlds' icons.
+image = { version = "0.25", default-features = false, features = ["png"] }
 horizon-mod-package = { path = "../../vendor/horizon/crates/horizon-mod-package", features = ["index"] }
 horizon-core = { path = "../../vendor/horizon/crates/horizon-core" }
 

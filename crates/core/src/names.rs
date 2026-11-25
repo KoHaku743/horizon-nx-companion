@@ -70,10 +70,7 @@ pub fn reveal_hidden(card: &SdCard) -> Result<String, String> {
         let target = free_name(path.parent().unwrap_or(path), &name);
         std::fs::rename(path, &target).map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    Ok(format!(
-        "Renamed {} files or folders for the Switch.",
-        found.len()
-    ))
+    Ok(format!("Renamed for the Switch: {}.", found.len()))
 }
 
 /// Where `name` goes in the card's folder `dir`: numbered ("Мир (2)") while it's taken.
